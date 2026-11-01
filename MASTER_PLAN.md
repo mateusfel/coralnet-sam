@@ -2,7 +2,7 @@
 
 > **Documento de Especificação Técnica e Guia de Continuidade**  
 > **Repositório do Projeto:** `D:\coralnet-sam`  
-> **Status:** Fase 1 Concluída (Arquitetura base, modelo local e notebook Colab operacionais)
+> **Status:** Fase 1 e Fase 2 Concluídas (Fundação, RLE/Polígonos, NMS Hierárquico e Votação Multi-Ponto operacionais)
 
 ---
 
@@ -142,14 +142,11 @@ flowchart LR
 
 ---
 
-### 📋 Fase 2: Polígonos Reais e Votação Multi-Ponto (Próximo Passo)
-1. **Transmissão de Polígonos (*Run-Length Encoding* - RLE):**
-   - No notebook do Colab, serializar as máscaras completas em RLE (`pycocotools.mask.encode`) para que o cliente local receba o polígono com as curvas exatas da colônia sem sobrecarregar a largura de banda do túnel.
-2. **Classificação Multi-Ponto por Colônia (*Multi-point Voting*):**
-   - Para colônias grandes ($> 5.000\text{ pixels}$), amostrar 3 a 5 pontos dentro da máscara em vez de apenas 1 centróide.
-   - Aplicar votação por maioria (*Majority Voting*) para garantir que uma colônia com um pequeno pedaço de alga na borda não seja classificada incorretamente como alga.
-3. **Resolução de Sobreposição de Máscaras (*NMS / Hierarchical Suppression*):**
-   - Implementar ordenação por escore de estabilidade para evitar que colônias fiquem com polígonos duplicados.
+### ✅ Fase 2: Polígonos Reais e Votação Multi-Ponto (Concluída)
+- [x] **Transmissão e Desenho de Polígonos:** Extração de contornos vetoriais com OpenCV e serialização RLE compacta (`colab/sam_server_colab.ipynb` e `src/sam_client.py`).
+- [x] **Classificação Multi-Ponto por Colônia (*Multi-point Voting*):** Amostragem de até 5 pontos internos em colônias grandes com agregação probabilística e votação por maioria (`src/coral_classifier.py` e `src/geometry.py`).
+- [x] **Resolução de Sobreposição de Máscaras (*Hierarchical NMS*):** Supressão inteligente de fragmentos e caixas duplicadas por IoU e taxa de contenção (`src/geometry.py`).
+- [x] **Validação em Foto Real de 12 Megapixels:** Teste bem-sucedido com supressão de 134 redundâncias e mapeamento de 300 colônias refinadas.
 
 ---
 

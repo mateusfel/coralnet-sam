@@ -23,6 +23,18 @@ def main():
         "--output", type=str, default="output",
         help="Diretório de saída para os mapas semânticos gerados"
     )
+    parser.add_argument(
+        "--iou-thresh", type=float, default=0.60,
+        help="Limiar IoU para supressão de máscaras sobrepostas (Fase 2 NMS)"
+    )
+    parser.add_argument(
+        "--containment-thresh", type=float, default=0.80,
+        help="Limiar de contenção para eliminar fragmentos dentro de colônias maiores"
+    )
+    parser.add_argument(
+        "--n-points", type=int, default=5,
+        help="Número de pontos interiores para votação por consenso em colônias grandes"
+    )
 
     args = parser.parse_args()
 
@@ -58,7 +70,10 @@ def main():
         run_hybrid_pipeline(
             image_path=img_path,
             colab_url=args.sam_url,
-            output_dir=args.output
+            output_dir=args.output,
+            iou_thresh=args.iou_thresh,
+            containment_thresh=args.containment_thresh,
+            n_points_multi=args.n_points
         )
 
     print("\n[OK] Pipeline concluído com sucesso!")

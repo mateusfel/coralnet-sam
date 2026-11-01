@@ -5,3 +5,5 @@ torchvision>=0.15.0
 pillow>=9.5.0
 numpy>=1.22.0
 matplotlib>=3.6.0
+opencv-python>=4.8.0
+pycocotools>=2.0.7

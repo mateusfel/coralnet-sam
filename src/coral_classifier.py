@@ -112,32 +112,77 @@ class LocalCoralClassifier:
         return image.crop((left, top, right, bottom))
 
     @torch.no_grad()
-    def classify_centroids(self, image: Image.Image, centroids: List[Tuple[int, int]]) -> List[Dict[str, Any]]:
+    def classify_colonies_multipoint(
+        self,
+        image: Image.Image,
+        colony_points_list: List[List[Tuple[int, int]]]
+    ) -> List[Dict[str, Any]]:
         """
-        Classifies each colony centroid using EfficientNet-B0 embeddings.
+        Classifies colonies using Multi-Point Voting (Fase 2).
+        For each colony, extracts patches from multiple interior points,
+        computes consensus voting and averages probability distributions.
         """
         results = []
+        if not colony_points_list:
+            return results
+
+        # Flatten all points while tracking colony boundaries
+        all_points = []
+        colony_slices = []
+        for pts in colony_points_list:
+            start = len(all_points)
+            all_points.extend(pts)
+            end = len(all_points)
+            colony_slices.append((start, end))
+
+        # Batch feature extraction through EfficientNet-B0
+        all_probs = []
         batch_size = 16
 
-        for i in range(0, len(centroids), batch_size):
-            batch_pts = centroids[i:i + batch_size]
+        for i in range(0, len(all_points), batch_size):
+            batch_pts = all_points[i:i + batch_size]
             tensors = [self.preprocess(self.extract_patch(image, r, c)) for r, c in batch_pts]
             batch_tensor = torch.stack(tensors).to(self.device)
 
             features = self.backbone(batch_tensor)
             logits = self.head(features)
             probs = torch.softmax(logits, dim=1).cpu().numpy()
+            all_probs.append(probs)
 
-            for p in probs:
-                top_indices = np.argsort(p)[::-1][:3]
-                results.append({
-                    "genus": self.classes[top_indices[0]],
-                    "confidence": float(p[top_indices[0]]),
-                    "color": CLASS_COLORS.get(self.classes[top_indices[0]], "#38bdf8"),
-                    "alternatives": [
-                        {"genus": self.classes[idx], "confidence": float(p[idx])}
-                        for idx in top_indices[1:]
-                    ]
-                })
+        all_probs = np.vstack(all_probs) if all_probs else np.empty((0, len(self.classes)))
+
+        # Aggregate multi-point predictions per colony
+        for start, end in colony_slices:
+            col_probs = all_probs[start:end]
+            mean_probs = np.mean(col_probs, axis=0)
+            votes = [np.argmax(p) for p in col_probs]
+
+            # Consensus ratio (how many sample points agreed with the majority)
+            top_idx = int(np.argmax(mean_probs))
+            consensus_votes = sum(1 for v in votes if v == top_idx)
+            consensus_ratio = float(consensus_votes / len(votes)) if votes else 1.0
+
+            sorted_indices = np.argsort(mean_probs)[::-1]
+            top_genus = self.classes[top_idx]
+
+            results.append({
+                "genus": top_genus,
+                "confidence": float(mean_probs[top_idx]),
+                "color": CLASS_COLORS.get(top_genus, "#38bdf8"),
+                "sample_points_count": len(votes),
+                "consensus_ratio": consensus_ratio,
+                "alternatives": [
+                    {"genus": self.classes[idx], "confidence": float(mean_probs[idx])}
+                    for idx in sorted_indices[1:3]
+                ]
+            })
 
         return results
+
+    @torch.no_grad()
+    def classify_centroids(self, image: Image.Image, centroids: List[Tuple[int, int]]) -> List[Dict[str, Any]]:
+        """
+        Backward compatible classification for single centroids.
+        """
+        return self.classify_colonies_multipoint(image, [[pt] for pt in centroids])
+
