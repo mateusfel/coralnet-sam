@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Large model weights (keep folder, don't commit big checkpoints)
+models/*.pth
+models/*.pt
+!models/.gitkeep
+
+# Outputs
+output/*
+!output/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
