@@ -2,7 +2,7 @@
 
 > **Documento de Especificação Técnica e Guia de Continuidade**  
 > **Repositório do Projeto:** `D:\coralnet-sam`  
-> **Status:** Fase 1 e Fase 2 Concluídas (Fundação, RLE/Polígonos, NMS Hierárquico e Votação Multi-Ponto operacionais)
+> **Status:** Fases 1, 2 e 3 Concluídas (Fundação, Polígonos Reais, Interface Web Interativa com URL ngrok e ajuste de min_area dinâmicos, métricas em cm² e exportação CSV operacionais)
 
 ---
 
@@ -150,15 +150,13 @@ flowchart LR
 
 ---
 
-### 📋 Fase 3: Interface Web Unificada e Métricas Físicas em $cm^2$
-1. **Adaptar a Interface Web para Máscaras do SAM:**
-   - Adicionar na interface web (`app.py`) a opção de colar a URL do Colab.
-   - Renderizar polígonos SVG semi-transparentes cobrindo cada colônia contornada.
-2. **Cálculo de Área Real ($cm^2$):**
-   - Permitir informar a escala física (ex: tamanho do quadrante de amostragem em $cm$ ou $mm$ por pixel).
-   - Exibir o relatório: *"Colônia #3 (Mussismilia): $248.5\text{ cm}^2$"*.
-3. **Exportação de Dados:**
-   - Botão para exportar relatório em **CSV** (ID, Gênero, Área em $cm^2$, Confiança, Coordenadas) e máscaras em formato **GeoTIFF / PNG**.
+### ✅ Fase 3: Interface Web Unificada e Métricas Físicas em $cm^2$ (Concluída)
+- [x] **Interface Web Interativa (`app.py`):** Dashboard moderno em Flask com integração de foto, miniaturas e controles avançados.
+- [x] **Configuração Remota do Colab:** Campo dedicado para inserção da URL do ngrok com teste de ping e status visual da GPU em tempo real.
+- [x] **Controle de Tamanho Mínimo de Polígono:** Slider e input numérico para definir `min_area` (50 a 2500 px) e suprimir micro-ruídos antes e depois da inferência.
+- [x] **Cálculo de Área Real em $cm^2$:** Calibração da escala física do quadrante (ex: 50x50 cm) com conversão pixel $\to cm^2$ para cada colônia e para os totais de cobertura.
+- [x] **Visualizador Interativo com Polígonos SVG:** Camada vetorial com hover de colônias, tooltips com metadados ecológicos, controle de opacidade e destaque de gêneros.
+- [x] **Módulo de Exportação:** Download direto do relatório ecológico tabular em CSV (`Colony_ID, Genus, Area_cm2, Coverage_Pct, Confidence...`) e mapas em alta definição.
 
 ---
 
@@ -182,4 +180,8 @@ d:\coralnet-inference\.venv\Scripts\python.exe run_pipeline.py --image images/10
 
 # 3. Executar com o servidor Colab conectado (quando a URL do ngrok estiver ativa)
 d:\coralnet-inference\.venv\Scripts\python.exe run_pipeline.py --image images/10.0_P5112664.JPG --sam-url https://xxxx.ngrok-free.app
+
+# 4. Iniciar a Interface Web Completa (Fase 3)
+d:\coralnet-inference\.venv\Scripts\python.exe app.py
+# Acesse no navegador: http://127.0.0.1:5000
 ```

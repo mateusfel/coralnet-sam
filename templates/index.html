@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoralNet + SAM — Segmentação Bêntica Automatizada</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-icon">🪸</div>
+      <div>
+        <h1>CoralNet + SAM <span class="tag-version">Fase 3</span></h1>
+        <p class="subtitle">Segmentação Bêntica 100% Automatizada &bull; Métricas em cm² &bull; Taxonomia de Recifes</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="colab-status-badge" class="badge badge-offline">
+        <span class="status-dot"></span>
+        <span id="colab-status-text">Colab SAM: Desconectado</span>
+      </div>
+      <div class="badge badge-info">
+        <span>CoralNet: EfficientNet-B0 Local</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-layout">
+    <!-- Sidebar Controls -->
+    <aside class="sidebar">
+      <!-- 1. Google Colab SAM Connection -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-step">1</span>
+          <h2>Servidor SAM (Google Colab)</h2>
+        </div>
+        
+        <div class="form-group">
+          <label for="colab-url-input">URL Pública do Túnel (ngrok):</label>
+          <div class="input-with-btn">
+            <input 
+              type="url" 
+              id="colab-url-input" 
+              class="form-control" 
+              placeholder="https://xxxx.ngrok-free.dev" 
+              value="https://daylight-stand-greedy.ngrok-free.dev"
+            >
+            <button id="btn-test-colab" class="btn btn-secondary" title="Testar Conexão com o Colab">
+              <span id="btn-test-icon">🔌</span> Testar
+            </button>
+          </div>
+          <small class="help-text" id="colab-help-text">
+            Insira a URL gerada pelo notebook no Google Colab para usar o SAM ViT-H na GPU Tesla T4.
+          </small>
+        </div>
+      </section>
+
+      <!-- 2. Image Selection & Upload -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-step">2</span>
+          <h2>Foto do Transecto Submarino</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="image-select">Selecione uma Imagem do Transecto:</label>
+          <select id="image-select" class="form-control">
+            <option value="">Carregando fotos...</option>
+          </select>
+        </div>
+
+        <div class="thumbnail-strip" id="thumbnail-strip">
+          <!-- Miniaturas carregadas via JS -->
+        </div>
+
+        <div class="upload-box" id="upload-box">
+          <input type="file" id="file-input" accept="image/*" style="display: none;">
+          <button type="button" class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('file-input').click()">
+            📁 Enviar Nova Foto do Computador
+          </button>
+        </div>
+      </section>
+
+      <!-- 3. Segmentation & Scale Parameters -->
+      <section class="card">
+        <div class="card-header">
+          <span class="card-step">3</span>
+          <h2>Ajuste de Polígonos & Escala Física</h2>
+        </div>
+
+        <!-- Minimum Polygon Area Slider -->
+        <div class="form-group">
+          <div class="label-with-value">
+            <label for="min-area-slider">Tamanho Mínimo do Polígono:</label>
+            <span class="value-badge"><strong id="min-area-val">300</strong> px</span>
+          </div>
+          <input 
+            type="range" 
+            id="min-area-slider" 
+            min="50" 
+            max="2500" 
+            value="300" 
+            step="50" 
+            class="slider"
+          >
+          <div class="slider-marks">
+            <span>50px (Detalhes)</span>
+            <span>300px (Padrão)</span>
+            <span>2500px (Macro)</span>
+          </div>
+          <small class="help-text">
+            Descarta ruídos e cascalhos menores que esse valor antes da classificação.
+          </small>
+        </div>
+
+        <!-- Physical Scale (cm) -->
+        <div class="form-group">
+          <label>Escala do Quadrante de Amostragem (cm):</label>
+          <div class="scale-inputs">
+            <div class="scale-field">
+              <span>L:</span>
+              <input type="number" id="quadrat-w" class="form-control" value="50" min="5" max="500">
+              <span>cm</span>
+            </div>
+            <span class="scale-x">&times;</span>
+            <div class="scale-field">
+              <span>A:</span>
+              <input type="number" id="quadrat-h" class="form-control" value="50" min="5" max="500">
+              <span>cm</span>
+            </div>
+          </div>
+          <small class="help-text">Área total do quadrante: <strong id="quadrat-area-label">2500 cm²</strong></small>
+        </div>
+
+        <!-- NMS Overlap Threshold -->
+        <div class="form-group">
+          <div class="label-with-value">
+            <label for="iou-slider">Filtro de Sobreposição (IoU):</label>
+            <span class="value-badge"><strong id="iou-val">0.60</strong></span>
+          </div>
+          <input type="range" id="iou-slider" min="0.30" max="0.90" value="0.60" step="0.05" class="slider">
+          <small class="help-text">Elimina duplicatas e máscaras internas na mesma colônia.</small>
+        </div>
+
+        <!-- Action Button -->
+        <button id="btn-run" class="btn btn-primary btn-block btn-lg">
+          <span class="btn-icon">⚡</span>
+          <span id="btn-run-text">Executar SAM ➔ CoralNet</span>
+        </button>
+      </section>
+    </aside>
+
+    <!-- Main Workspace -->
+    <section class="main-workspace">
+      <!-- Toolbar -->
+      <div class="workspace-toolbar">
+        <div class="toolbar-left">
+          <span id="image-name-badge" class="toolbar-title">Nenhuma foto processada</span>
+          <span id="colony-count-badge" class="badge badge-count" style="display: none;">0 colônias</span>
+        </div>
+        <div class="toolbar-right">
+          <div class="view-toggle">
+            <button id="btn-mode-interactive" class="btn-toggle active">Visualizador Interativo (SVG)</button>
+            <button id="btn-mode-rendered" class="btn-toggle">Mapa Estático (Matplotlib)</button>
+          </div>
+          <div class="opacity-control" id="opacity-control" style="display: none;">
+            <label for="opacity-slider">Opacidade:</label>
+            <input type="range" id="opacity-slider" min="10" max="90" value="40" step="5">
+            <span id="opacity-val">40%</span>
+          </div>
+          <button id="btn-download-csv" class="btn btn-secondary btn-sm" style="display: none;">
+            📥 Baixar CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas / Image Viewer -->
+      <div class="viewer-container" id="viewer-container">
+        <!-- Placeholder State -->
+        <div class="viewer-placeholder" id="viewer-placeholder">
+          <div class="placeholder-content">
+            <div class="placeholder-icon">🪸</div>
+            <h3>Pipeline Híbrido SAM ➔ CoralNet</h3>
+            <p>Selecione uma foto de transecto ao lado, ajuste a URL do Colab e clique em <strong>"Executar"</strong> para gerar os polígonos automáticos.</p>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="viewer-loading" id="viewer-loading" style="display: none;">
+          <div class="spinner"></div>
+          <h3 id="loading-title">Processando Imagem...</h3>
+          <p id="loading-subtext">Enviando imagem para o SAM ViT-H no Google Colab...</p>
+        </div>
+
+        <!-- Interactive SVG Overlay Mode -->
+        <div class="interactive-stage" id="interactive-stage" style="display: none;">
+          <img id="stage-image" src="" alt="Transecto Submarino">
+          <svg id="stage-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div id="colony-tooltip" class="colony-tooltip" style="display: none;"></div>
+        </div>
+
+        <!-- Rendered Matplotlib Mode -->
+        <div class="rendered-stage" id="rendered-stage" style="display: none;">
+          <img id="rendered-image" src="" alt="Mapa Semântico">
+        </div>
+      </div>
+
+      <!-- Ecological Summary Cards & Table -->
+      <div class="results-panel" id="results-panel" style="display: none;">
+        <div class="results-header">
+          <h2>📊 Relatório Ecológico & Cobertura Bêntica Real</h2>
+          <div class="results-meta" id="results-meta"></div>
+        </div>
+
+        <!-- Coverage Progress Bars -->
+        <div class="coverage-bars-grid" id="coverage-bars-grid">
+          <!-- Gerado via JS -->
+        </div>
+
+        <!-- Detailed Species Table -->
+        <div class="table-container">
+          <table class="species-table" id="species-table">
+            <thead>
+              <tr>
+                <th>Cor</th>
+                <th>Gênero / Substrato</th>
+                <th>Colônias</th>
+                <th>Área (cm²)</th>
+                <th>Cobertura (%)</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="species-tbody">
+              <!-- Linhas geradas via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/js/main.js"></script>
+</body>
+</html>
