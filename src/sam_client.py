@@ -63,6 +63,7 @@ class RemoteSAMClient:
                 
                 buf = io.BytesIO()
                 resized_img.save(buf, format="JPEG", quality=95)
+                buf.seek(0)
                 headers = {"Bypass-Tunnel-Reminder": "true", "User-Agent": "CoralNet-SAM-Client/1.0"}
                 files = {"file": (os.path.basename(image_path), buf, "image/jpeg")}
                 response = requests.post(endpoint, files=files, params=params, headers=headers, timeout=self.timeout)
