@@ -93,8 +93,21 @@ class LocalCoralClassifier:
         self.backbone.eval()
         self.backbone.to(self.device)
 
-        # 2. Classification Head
+        # 2. Classification Head (loads trained head if available, else deterministic seed)
+        models_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")
+        head_weights_path = os.path.join(models_dir, "classifier_head.pth")
+
+        cpu_rng_state = torch.get_rng_state()
+        torch.manual_seed(42)
         self.head = CoralNetClassifierHead(in_features=1280, num_classes=len(self.classes))
+        torch.set_rng_state(cpu_rng_state)
+
+        self.has_trained_head = False
+        if os.path.exists(head_weights_path):
+            print(f"[*] Carregando cabeça classificadora treinada de: {head_weights_path}")
+            self.head.load_state_dict(torch.load(head_weights_path, map_location="cpu"))
+            self.has_trained_head = True
+
         self.head.eval()
         self.head.to(self.device)
 
@@ -115,16 +128,22 @@ class LocalCoralClassifier:
     def classify_colonies_multipoint(
         self,
         image: Image.Image,
-        colony_points_list: List[List[Tuple[int, int]]]
+        colony_points_list: List[List[Tuple[int, int]]],
+        coral_only: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Classifies colonies using Multi-Point Voting (Fase 2).
         For each colony, extracts patches from multiple interior points,
         computes consensus voting and averages probability distributions.
+        When coral_only=True (e.g. CoralSCOP semantic coral masks), masks out abiotic
+        substrate classes (Algae, Rock, Sand) so verified coral masks receive coral taxonomy.
         """
         results = []
         if not colony_points_list:
             return results
+
+        # Abiotic / non-coral substrate indices in TARGET_CLASSES
+        non_coral_indices = [11, 12, 13]
 
         # Flatten all points while tracking colony boundaries
         all_points = []
@@ -146,6 +165,8 @@ class LocalCoralClassifier:
 
             features = self.backbone(batch_tensor)
             logits = self.head(features)
+            if coral_only:
+                logits[:, non_coral_indices] = -1e9
             probs = torch.softmax(logits, dim=1).cpu().numpy()
             all_probs.append(probs)
 
@@ -185,4 +206,14 @@ class LocalCoralClassifier:
         Backward compatible classification for single centroids.
         """
         return self.classify_colonies_multipoint(image, [[pt] for pt in centroids])
+
+
+_CLASSIFIER_SINGLETON: LocalCoralClassifier = None
+
+
+def get_coral_classifier() -> LocalCoralClassifier:
+    global _CLASSIFIER_SINGLETON
+    if _CLASSIFIER_SINGLETON is None:
+        _CLASSIFIER_SINGLETON = LocalCoralClassifier()
+    return _CLASSIFIER_SINGLETON
 

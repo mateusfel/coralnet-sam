@@ -737,3 +737,363 @@ label {
   border-radius: 3px;
   display: inline-block;
 }
+
+/* Accordion / Collapsible SAM Hyperparameters */
+.accordion-card {
+  transition: border-color 0.2s ease;
+}
+
+.accordion-toggle {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s ease;
+}
+
+.accordion-toggle:hover {
+  background-color: var(--bg-card-hover);
+}
+
+.card-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-badge {
+  font-size: 0.68rem;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.accordion-arrow {
+  font-size: 1rem;
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+  display: inline-block;
+}
+
+.accordion-arrow.open {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Action Card */
+.action-card {
+  padding: 8px 0 0 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Coral Tuning Guide */
+.tuning-guide-box {
+  background: rgba(14, 165, 233, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.tuning-guide-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.tuning-guide-icon {
+  font-size: 1.1rem;
+}
+
+.tuning-guide-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tuning-guide-list li {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
+}
+
+.tuning-guide-list li strong {
+  color: #ffffff;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.tuning-guide-list li em {
+  font-style: normal;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.tuning-guide-list li code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #fbbf24;
+  font-family: monospace;
+}
+
+/* Log Viewer Modal */
+.logs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.logs-modal-card {
+  background: #0f172a;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 880px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+
+.logs-modal-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #131d35;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.logs-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logs-icon {
+  font-size: 1.5rem;
+}
+
+.logs-modal-header h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.logs-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.logs-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logs-body {
+  padding: 16px;
+  overflow-y: auto;
+  flex: 1;
+  background: #090d16;
+  min-height: 320px;
+}
+
+.logs-terminal {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.log-line {
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.log-info {
+  color: #94a3b8;
+}
+
+.log-success {
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.log-warning {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.log-error {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  font-weight: 500;
+}
+
+.logs-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #0f172a;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.log-file-label {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-family: monospace;
+}
+
+/* Warning Badge (e.g. legacy SAM server connected instead of CoralSCOP) */
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fbbf24;
+}
+
+/* Underwater Filter & 4-Corner Quadrat ROI Controls */
+.filter-preview-row {
+  margin-top: 8px;
+}
+
+.roi-group-box {
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.roi-btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.roi-status-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.roi-inactive {
+  background: rgba(100, 116, 139, 0.2);
+  color: var(--text-muted);
+}
+
+.roi-picking {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.roi-active {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.quadrat-banner {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid #fbbf24;
+  color: #fef3c7;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.65);
+  white-space: nowrap;
+}
+
+.btn-xs {
+  padding: 3px 8px;
+  font-size: 0.74rem;
+}
+
+#stage-svg.picking-quadrat {
+  cursor: crosshair;
+}
+
+.quadrat-roi-polygon {
+  fill: rgba(56, 189, 248, 0.07);
+  stroke: #38bdf8;
+  stroke-width: 8px;
+  stroke-dasharray: 26 16;
+  pointer-events: none;
+}
+
+.quadrat-roi-polyline {
+  fill: none;
+  stroke: #fbbf24;
+  stroke-width: 8px;
+  stroke-dasharray: 20 12;
+  pointer-events: none;
+}
+
+.quadrat-corner-handle {
+  cursor: grab;
+  transition: r 0.15s ease;
+}
+
+.quadrat-corner-handle:active {
+  cursor: grabbing;
+}
+
+.quadrat-corner-label {
+  fill: #0f172a;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}

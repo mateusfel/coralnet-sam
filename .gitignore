@@ -15,9 +15,10 @@ models/*.pth
 models/*.pt
 !models/.gitkeep
 
-# Outputs
+# Outputs & runtime logs
 output/*
 !output/.gitkeep
+logs/*.log
 
 # IDEs
 .vscode/
