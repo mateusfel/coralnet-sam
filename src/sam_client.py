@@ -23,7 +23,8 @@ class RemoteSAMClient:
         if not self.colab_url:
             return False
         try:
-            resp = requests.get(f"{self.colab_url}/health", timeout=8)
+            headers = {"Bypass-Tunnel-Reminder": "true", "User-Agent": "CoralNet-SAM-Client/1.0"}
+            resp = requests.get(f"{self.colab_url}/health", headers=headers, timeout=8)
             return resp.status_code == 200
         except Exception:
             return False
@@ -62,13 +63,14 @@ class RemoteSAMClient:
                 
                 buf = io.BytesIO()
                 resized_img.save(buf, format="JPEG", quality=95)
-                buf.seek(0)
+                headers = {"Bypass-Tunnel-Reminder": "true", "User-Agent": "CoralNet-SAM-Client/1.0"}
                 files = {"file": (os.path.basename(image_path), buf, "image/jpeg")}
-                response = requests.post(endpoint, files=files, params=params, timeout=self.timeout)
+                response = requests.post(endpoint, files=files, params=params, headers=headers, timeout=self.timeout)
             else:
+                headers = {"Bypass-Tunnel-Reminder": "true", "User-Agent": "CoralNet-SAM-Client/1.0"}
                 with open(image_path, "rb") as f:
                     files = {"file": (os.path.basename(image_path), f, "image/jpeg")}
-                    response = requests.post(endpoint, files=files, params=params, timeout=self.timeout)
+                    response = requests.post(endpoint, files=files, params=params, headers=headers, timeout=self.timeout)
 
         if response.status_code != 200:
             raise RuntimeError(f"Erro retornado pelo Colab ({response.status_code}): {response.text}")

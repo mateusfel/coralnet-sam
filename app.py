@@ -57,7 +57,8 @@ def test_colab():
     client = RemoteSAMClient(colab_url=url)
     try:
         t0 = time.time()
-        resp = requests.get(f"{url}/health", timeout=6)
+        headers = {"Bypass-Tunnel-Reminder": "true", "User-Agent": "CoralNet-SAM-Client/1.0"}
+        resp = requests.get(f"{url}/health", headers=headers, timeout=8)
         latency_ms = int((time.time() - t0) * 1000)
         if resp.status_code == 200:
             info = resp.json()
@@ -163,7 +164,7 @@ def serve_output(filename):
 
 if __name__ == "__main__":
     print("\n" + "=" * 65)
-    print("🪸 CoralNet-SAM Web App (Fase 3: Interface Unificada)")
-    print("Acesse em seu navegador: http://127.0.0.1:5000")
+    print("[*] CoralNet-SAM Web App (Fase 3: Interface Unificada)")
+    print("[*] Acesse em seu navegador: http://127.0.0.1:5000")
     print("=" * 65 + "\n")
     app.run(host="127.0.0.1", port=5000, debug=False)
