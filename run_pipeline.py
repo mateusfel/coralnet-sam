@@ -32,6 +32,10 @@ def main():
         help="Limiar de contenção para eliminar fragmentos dentro de colônias maiores"
     )
     parser.add_argument(
+        "--min-area", type=int, default=300,
+        help="Área mínima em pixels para considerar um polígono/colônia (elimina micro-ruídos)"
+    )
+    parser.add_argument(
         "--n-points", type=int, default=5,
         help="Número de pontos interiores para votação por consenso em colônias grandes"
     )
@@ -71,6 +75,7 @@ def main():
             image_path=img_path,
             colab_url=args.sam_url,
             output_dir=args.output,
+            min_area=args.min_area,
             iou_thresh=args.iou_thresh,
             containment_thresh=args.containment_thresh,
             n_points_multi=args.n_points

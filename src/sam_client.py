@@ -28,9 +28,15 @@ class RemoteSAMClient:
         except Exception:
             return False
 
-    def segment_image(self, image_path: str) -> Dict[str, Any]:
+    def segment_image(
+        self,
+        image_path: str,
+        min_area: int = 300,
+        pred_iou_thresh: float = 0.86
+    ) -> Dict[str, Any]:
         """
         Sends an image file to the remote SAM ViT-H server on Google Colab.
+        Allows configuring minimum polygon area and IoU threshold remotely.
         Resizes temporarily if larger than max_dimension to avoid GPU VRAM OOM,
         and rescales returned detections back to original photo dimensions.
         """
@@ -41,7 +47,8 @@ class RemoteSAMClient:
             )
 
         endpoint = f"{self.colab_url}/segment"
-        print(f"[*] Enviando imagem para o SAM ViT-H no Google Colab: {endpoint}...")
+        params = {"min_area": min_area, "pred_iou_thresh": pred_iou_thresh}
+        print(f"[*] Enviando imagem para o SAM ViT-H no Google Colab: {endpoint} (min_area={min_area} px)...")
 
         # Open and check dimensions
         with Image.open(image_path) as orig_img:
@@ -57,11 +64,11 @@ class RemoteSAMClient:
                 resized_img.save(buf, format="JPEG", quality=95)
                 buf.seek(0)
                 files = {"file": (os.path.basename(image_path), buf, "image/jpeg")}
-                response = requests.post(endpoint, files=files, timeout=self.timeout)
+                response = requests.post(endpoint, files=files, params=params, timeout=self.timeout)
             else:
                 with open(image_path, "rb") as f:
                     files = {"file": (os.path.basename(image_path), f, "image/jpeg")}
-                    response = requests.post(endpoint, files=files, timeout=self.timeout)
+                    response = requests.post(endpoint, files=files, params=params, timeout=self.timeout)
 
         if response.status_code != 200:
             raise RuntimeError(f"Erro retornado pelo Colab ({response.status_code}): {response.text}")
@@ -76,12 +83,17 @@ class RemoteSAMClient:
         sx = orig_w / float(sent_w) if sent_w else 1.0
         sy = orig_h / float(sent_h) if sent_h else 1.0
 
+        filtered_masks = []
         for m in data.get("masks", []):
             bx, by, bw, bh = m["bbox"]
             m["bbox"] = [int(bx * sx), int(by * sy), int(bw * sx), int(bh * sy)]
             cy, cx = m["centroid"]
             m["centroid"] = [int(cy * sy), int(cx * sx)]
             m["area"] = int(m["area"] * (sx * sy))
+
+            # Discard micro-fragments below min_area
+            if m["area"] < min_area:
+                continue
 
             # Scale existing polygon or generate organic contour
             if "polygon" in m and m["polygon"]:
@@ -95,6 +107,10 @@ class RemoteSAMClient:
             else:
                 m["polygon"] = generate_approx_polygon(m["bbox"])
 
+            filtered_masks.append(m)
+
+        data["masks"] = filtered_masks
+        data["total_masks"] = len(filtered_masks)
         data["image_width"] = orig_w
         data["image_height"] = orig_h
 

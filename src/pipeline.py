@@ -20,6 +20,7 @@ def run_hybrid_pipeline(
     image_path: str,
     colab_url: str = None,
     output_dir: str = "output",
+    min_area: int = 300,
     iou_thresh: float = 0.60,
     containment_thresh: float = 0.80,
     n_points_multi: int = 5,
@@ -27,7 +28,7 @@ def run_hybrid_pipeline(
 ) -> Dict[str, Any]:
     """
     Executes the 100% automated 2-Stage Benthic Segmentation (Fase 2):
-    1. Remote SAM ViT-H on Colab GPU: Discovers all colonies & boundaries
+    1. Remote SAM ViT-H on Colab GPU: Discovers all colonies & boundaries with configurable min_area
     2. Hierarchical NMS & Containment Suppression: Eliminates redundant overlapping masks
     3. Multi-Point Interior Sampling & Consensus Voting: Robust classification of colonies
     4. Local CoralNet EfficientNet-B0: Classifies each colony into Brazilian reef taxonomy
@@ -39,13 +40,14 @@ def run_hybrid_pipeline(
 
     print(f"\n{'='*70}")
     print(f"[*] Iniciando Pipeline Híbrido (Fase 2): {os.path.basename(image_path)} ({w}x{h} px)")
+    print(f"    Parâmetros: min_area={min_area}px | iou_thresh={iou_thresh} | multi_points={n_points_multi}")
     print(f"{'='*70}")
 
     # Stage 1: Segment Anything Model (Remote on Colab GPU or Local fallback)
     sam_client = RemoteSAMClient(colab_url=colab_url)
     
     if colab_url:
-        sam_data = sam_client.segment_image(image_path)
+        sam_data = sam_client.segment_image(image_path, min_area=min_area)
         raw_masks = sam_data.get("masks", [])
     else:
         print("[!] Nenhuma URL do Google Colab fornecida.")

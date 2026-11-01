@@ -103,8 +103,8 @@ D:\coralnet-sam\
   - `points_per_side = 32`: Grade densa de 1.024 pontos de sondagem inicial.
   - `pred_iou_thresh = 0.86`: Elimina máscaras de contorno incerto.
   - `stability_score_thresh = 0.90`: Garante contornos estáveis sob diferentes limiares.
-  - `min_mask_region_area = 200`: Ignora ruídos menores que 200 pixels.
-- **API:** FastAPI expondo `POST /segment` que retorna os metadados das máscaras em JSON compactado via túnel `ngrok`.
+  - `min_mask_region_area`: Controlado remotamente pelo cliente (padrão: 300 pixels) para suprimir microfragmentos.
+- **API Dinâmica:** FastAPI expondo `POST /segment?min_area={int}&pred_iou_thresh={float}` que ajusta os hiperparâmetros do SAM em tempo de execução sem recarregar o modelo, retornando máscaras e contornos RLE em JSON compactado via túnel `ngrok`.
 
 ### 5.2 Módulo do Classificador Local
 - **Arquivo:** `src/coral_classifier.py`
