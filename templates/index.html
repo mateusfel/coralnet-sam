@@ -90,25 +90,30 @@
           <h2>Ajuste de Polígonos & Escala Física</h2>
         </div>
 
-        <!-- Minimum Polygon Area Slider -->
+        <!-- Minimum Polygon Area Slider & Direct Number Input -->
         <div class="form-group">
           <div class="label-with-value">
             <label for="min-area-slider">Tamanho Mínimo do Polígono:</label>
-            <span class="value-badge"><strong id="min-area-val">300</strong> px</span>
+            <div class="min-area-badge-container">
+              <input type="number" id="min-area-input" class="min-area-num-input" min="50" max="100000" step="50" value="800">
+              <span class="px-unit">px</span>
+            </div>
           </div>
           <input 
             type="range" 
             id="min-area-slider" 
             min="50" 
-            max="2500" 
-            value="300" 
+            max="20000" 
+            value="800" 
             step="50" 
             class="slider"
           >
           <div class="slider-marks">
-            <span>50px (Detalhes)</span>
-            <span>300px (Padrão)</span>
-            <span>2500px (Macro)</span>
+            <span>50px</span>
+            <span>800px</span>
+            <span>5.000px</span>
+            <span>15.000px</span>
+            <span>20.000px</span>
           </div>
           <small class="help-text">
             Descarta ruídos e cascalhos menores que esse valor antes da classificação.

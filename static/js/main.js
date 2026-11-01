@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileInput = document.getElementById("file-input");
 
   const minAreaSlider = document.getElementById("min-area-slider");
+  const minAreaInput = document.getElementById("min-area-input");
   const minAreaVal = document.getElementById("min-area-val");
   const iouSlider = document.getElementById("iou-slider");
   const iouVal = document.getElementById("iou-val");
@@ -52,10 +53,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentResult = null;
   let activeViewMode = "interactive"; // 'interactive' or 'rendered'
 
-  // 1. Min Area Slider & Quadrat Scale
+  // 1. Min Area Slider & Direct Input
   minAreaSlider.addEventListener("input", (e) => {
-    minAreaVal.textContent = e.target.value;
+    if (minAreaInput) minAreaInput.value = e.target.value;
   });
+
+  if (minAreaInput) {
+    minAreaInput.addEventListener("input", (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (!isNaN(val)) {
+        if (val > parseInt(minAreaSlider.max, 10)) {
+          minAreaSlider.max = val;
+        }
+        minAreaSlider.value = val;
+      }
+    });
+  }
 
   iouSlider.addEventListener("input", (e) => {
     iouVal.textContent = parseFloat(e.target.value).toFixed(2);
@@ -217,8 +230,9 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const colabUrl = colabUrlInput.value.trim();
-    const minArea = parseInt(minAreaSlider.value, 10);
+    const minArea = minAreaInput
+      ? parseInt(minAreaInput.value, 10) || parseInt(minAreaSlider.value, 10)
+      : parseInt(minAreaSlider.value, 10);
     const iouThresh = parseFloat(iouSlider.value);
     const quadratWVal = parseFloat(quadratW.value) || 50;
     const quadratHVal = parseFloat(quadratH.value) || 50;

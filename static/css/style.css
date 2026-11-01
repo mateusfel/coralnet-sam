@@ -244,6 +244,38 @@ label {
   border-radius: 4px;
 }
 
+.min-area-badge-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.min-area-num-input {
+  width: 85px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: right;
+  padding: 3px 6px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.min-area-num-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.px-unit {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .slider {
   width: 100%;
   accent-color: var(--accent);
