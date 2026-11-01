@@ -14,7 +14,7 @@ class RemoteSAMClient:
     fully-automated class-agnostic colony masks.
     """
 
-    def __init__(self, colab_url: str = None, timeout: int = 300, max_dimension: int = 1536):
+    def __init__(self, colab_url: str = None, timeout: int = 300, max_dimension: int = 1024):
         self.colab_url = colab_url.rstrip("/") if colab_url else None
         self.timeout = timeout
         self.max_dimension = max_dimension
