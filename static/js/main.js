@@ -2296,8 +2296,42 @@ document.addEventListener("DOMContentLoaded", () => {
   // =========================================================================
   // 7. SVG SCENE RENDERING (POLYGONS, SUB-PARTS, DISCARDED, QUADRAT 4-CORNERS)
   // =========================================================================
+  function syncPhotoQuadratStatus(filename) {
+    if (!filename) return;
+    const hasQuad = Boolean(
+      (quadratCornersByImage[filename] && quadratCornersByImage[filename].length === 4) ||
+      (currentResult && currentResult.image_filename === filename && (currentResult.has_quadrat_roi || (currentResult.quadrat_corners && currentResult.quadrat_corners.length === 4)))
+    );
+
+    // 1. Update in workspaceImages array
+    const imgObj = workspaceImages.find((x) => x.filename === filename);
+    if (imgObj) {
+      imgObj.has_quadrat_roi = hasQuad;
+      if (hasQuad && quadratCornersByImage[filename]) {
+        imgObj.quadrat_corners = quadratCornersByImage[filename];
+      } else if (!hasQuad) {
+        imgObj.quadrat_corners = null;
+      }
+    }
+
+    // 2. Direct DOM update on the photo item badge in checklist
+    if (photoChecklistItems) {
+      const itemEl = Array.from(photoChecklistItems.querySelectorAll(".photo-check-item")).find(
+        (el) => el.dataset.filename === filename
+      );
+      if (itemEl) {
+        const quadBadge = itemEl.querySelector(".pipe-badge-quadrat");
+        if (quadBadge) {
+          quadBadge.className = `pipe-badge pipe-badge-quadrat ${hasQuad ? "pipe-active" : "pipe-muted"}`;
+          quadBadge.title = hasQuad ? "Quadrante 4 cantos calibrado por homografia" : "Foto inteira (sem recorte de PVC)";
+          quadBadge.textContent = hasQuad ? "📐 PVC 4C" : "📐 Geral";
+        }
+      }
+    }
+  }
+
   function updateQuadratUiState() {
-    const imgName = imageSelect.value;
+    const imgName = imageSelect ? imageSelect.value : "";
     const savedCorners = imgName ? quadratCornersByImage[imgName] : null;
 
     if (isPickingQuadrat) {
@@ -2325,6 +2359,10 @@ document.addEventListener("DOMContentLoaded", () => {
         btnStartQuadrat.textContent = "📐 Marcar 4 Cantos";
         btnClearQuadrat.style.display = "none";
       }
+    }
+
+    if (imgName) {
+      syncPhotoQuadratStatus(imgName);
     }
   }
 
@@ -2586,6 +2624,14 @@ document.addEventListener("DOMContentLoaded", () => {
             activePhotoStatusBadge.textContent = "✅ Processada";
           }
           currentResult = sData.data;
+          if (
+            currentResult.quadrat_corners &&
+            Array.isArray(currentResult.quadrat_corners) &&
+            currentResult.quadrat_corners.length === 4
+          ) {
+            quadratCornersByImage[filename] = currentResult.quadrat_corners;
+          }
+          syncPhotoQuadratStatus(filename);
           if (currentResult.fewshot_summary) {
             renderFewshotSummary(currentResult.fewshot_summary);
           }
@@ -2686,6 +2732,7 @@ document.addEventListener("DOMContentLoaded", () => {
       quadratCornersByImage[imgName] = orderQuadCornersJs(pickingCorners);
       isPickingQuadrat = false;
       pickingCorners = [];
+      syncPhotoQuadratStatus(imgName);
     }
     updateQuadratUiState();
     redrawSvgScene();
@@ -2769,6 +2816,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const imgName = imageSelect.value;
       if (imgName && quadratCornersByImage[imgName]) {
         quadratCornersByImage[imgName] = orderQuadCornersJs(quadratCornersByImage[imgName]);
+        syncPhotoQuadratStatus(imgName);
       }
       draggingCornerIdx = null;
       redrawSvgScene();
@@ -2820,6 +2868,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const imgName = imageSelect.value;
       if (imgName) {
         delete quadratCornersByImage[imgName];
+        if (currentResult && currentResult.image_filename === imgName) {
+          currentResult.has_quadrat_roi = false;
+          currentResult.quadrat_corners = null;
+        }
+        syncPhotoQuadratStatus(imgName);
       }
       isPickingQuadrat = false;
       pickingCorners = [];
@@ -2984,9 +3037,12 @@ document.addEventListener("DOMContentLoaded", () => {
       filterBadge.textContent = hasFilter ? "🎨 Realce" : "🎨 Orig.";
 
       // 2. Quadrat Badge (📐)
-      const hasQuad = img.has_quadrat_roi;
+      const hasQuad = Boolean(
+        img.has_quadrat_roi ||
+        (quadratCornersByImage[img.filename] && quadratCornersByImage[img.filename].length === 4)
+      );
       const quadBadge = document.createElement("span");
-      quadBadge.className = `pipe-badge ${hasQuad ? "pipe-active" : "pipe-muted"}`;
+      quadBadge.className = `pipe-badge pipe-badge-quadrat ${hasQuad ? "pipe-active" : "pipe-muted"}`;
       quadBadge.title = hasQuad ? "Quadrante 4 cantos calibrado por homografia" : "Foto inteira (sem recorte de PVC)";
       quadBadge.textContent = hasQuad ? "📐 PVC 4C" : "📐 Geral";
 
@@ -3131,6 +3187,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
       activeWorkspace = data.workspace;
       workspaceImages = data.images || [];
+      workspaceImages.forEach((img) => {
+        if (
+          img.quadrat_corners &&
+          Array.isArray(img.quadrat_corners) &&
+          img.quadrat_corners.length === 4 &&
+          !quadratCornersByImage[img.filename]
+        ) {
+          quadratCornersByImage[img.filename] = img.quadrat_corners;
+        }
+      });
 
       // Update Header & Sidebar UI
       if (headerProjectName) headerProjectName.textContent = activeWorkspace.name;
@@ -3540,6 +3606,7 @@ document.addEventListener("DOMContentLoaded", () => {
           quadrat_width_cm: quadratWVal,
           quadrat_height_cm: quadratHVal,
           filter_mode: filterMode,
+          quadrat_corners_by_image: quadratCornersByImage,
           points_per_side: pointsPerSide,
           pred_iou_thresh: predIou,
           stability_score_thresh: stabilityScore,

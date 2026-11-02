@@ -175,6 +175,7 @@ def _scan_workspace_images(ws):
                 "total_colonies": int(sess.get("total_colonies", 0)) if status_code == "processed" else 0,
                 "total_coral_cm2": float(sess.get("total_coral_cm2", 0.0)) if status_code == "processed" else 0.0,
                 "has_quadrat_roi": bool(sess.get("has_quadrat_roi", False) or bool(sess.get("quadrat_corners"))) if status_code == "processed" else False,
+                "quadrat_corners": sess.get("quadrat_corners") if status_code == "processed" else None,
                 "filter_mode": sess.get("filter_mode", "none") if status_code == "processed" else "none",
             })
 
