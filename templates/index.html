@@ -421,8 +421,10 @@
 
     <!-- Main Workspace -->
     <section class="main-workspace">
-      <!-- Toolbar -->
-      <div class="workspace-toolbar">
+      <!-- First-Fold Viewport Block (Toolbar + Canvas fitting 100% of visible viewport) -->
+      <div class="canvas-viewport-block" id="canvas-viewport-block">
+        <!-- Toolbar -->
+        <div class="workspace-toolbar">
         <div class="toolbar-left">
           <span id="image-name-badge" class="toolbar-title">Nenhuma foto selecionada</span>
           <span id="colony-count-badge" class="badge badge-count" style="display: none;">0 colônias</span>
@@ -707,6 +709,8 @@
           </div>
         </div>
       </div>
+      <!-- End of canvas-viewport-block -->
+    </div>
 
       <!-- Ecological Summary Cards & Per-Group / Per-Colony Footer Table -->
       <div class="results-panel" id="results-panel" style="display: none;">

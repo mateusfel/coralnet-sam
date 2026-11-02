@@ -57,7 +57,9 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-main);
   color: var(--text-main);
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -66,10 +68,13 @@ body {
 .app-header {
   background-color: #0d1527;
   border-bottom: 1px solid var(--border-color);
-  padding: 14px 24px;
+  padding: 0 24px;
+  height: 64px;
+  max-height: 64px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 50;
@@ -168,6 +173,8 @@ body {
 .app-layout {
   display: grid;
   grid-template-columns: 420px 1fr;
+  height: calc(100vh - 64px);
+  max-height: calc(100vh - 64px);
   flex: 1;
   overflow: hidden;
 }
@@ -179,8 +186,8 @@ body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 65px);
-  max-height: calc(100vh - 65px);
+  height: 100%;
+  max-height: 100%;
 }
 
 /* VS Code Style Activity Tab Bar */
@@ -627,9 +634,35 @@ label {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
-  max-height: calc(100vh - 65px);
+  overflow-x: hidden;
+  height: 100%;
+  max-height: 100%;
   padding: 16px 24px;
   gap: 16px;
+}
+
+/* First-Fold Viewport Block (Toolbar + Canvas fitting 100% of visible viewport) */
+.canvas-viewport-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: calc(100vh - 64px - 32px);
+  min-height: calc(100vh - 64px - 32px);
+  max-height: calc(100vh - 64px - 32px);
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.canvas-viewport-block .workspace-toolbar {
+  flex-shrink: 0;
+  padding: 8px 14px;
+}
+
+.canvas-viewport-block .viewer-container {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
 }
 
 .workspace-toolbar {
@@ -695,10 +728,9 @@ label {
 
 /* Viewer Container (Responsive Canvas Fit + Fullscreen Toggle) */
 .viewer-container {
-  height: calc(100vh - 175px);
-  min-height: 480px;
-  max-height: calc(100vh - 165px);
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   background-color: #060911;
   background-image: radial-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
@@ -804,7 +836,7 @@ label {
 
 .panzoom-layer img {
   max-width: 100%;
-  max-height: calc(100vh - 195px);
+  max-height: calc(100vh - 175px);
   width: auto;
   height: auto;
   display: block;
