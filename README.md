@@ -4,7 +4,7 @@
 > *Pipeline Híbrido: Google Colab GPU (Tesla T4) + Dashboard Web Interativo Local (Flask & SVG)*
 
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Model](https://img.shields.io/badge/Segmentation-CoralSCOP%20ViT--B%20(CVPR%202024)-emerald.svg)](https://github.com/reeflab/CoralSCOP)
+[![Model](https://img.shields.io/badge/Segmentation-CoralSCOP%20ViT--B%20(CVPR%202024)-emerald.svg)](https://github.com/zhengziqiang/CoralSCOP)
 [![Classifier](https://img.shields.io/badge/Taxonomy-BioCLIP%202.5%20ReefNet%20(ViT--H%2F14)-teal.svg)](https://github.com/Imageomics/bioclip)
 [![Status](https://img.shields.io/badge/Status-Fase%206%20Conclu%C3%ADda-brightgreen.svg)]()
 
@@ -166,5 +166,5 @@ Disponível na aba **"Mapa Estático"**, renderiza a figura pronta para publica�
 
 Desenvolvido para pesquisa científica e monitoramento de recifes de coral.  
 Se utilizar este software em pesquisas ou publicações, cite os trabalhos fundamentais:
-* **CoralSCOP**: Foundation Model for Coral Reef Segmentation (CVPR 2024).
-* **BioCLIP**: A Vision Foundation Model for the Tree of Life (CVPR 2024).
+* **CoralSCOP**: [Foundation Model for Coral Reef Segmentation](https://github.com/zhengziqiang/CoralSCOP) (CVPR 2024).
+* **BioCLIP**: [A Vision Foundation Model for the Tree of Life](https://github.com/Imageomics/bioclip) (CVPR 2024).
