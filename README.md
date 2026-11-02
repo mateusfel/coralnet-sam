@@ -18,7 +18,7 @@ O sistema elimina o trabalho manual exaustivo de marcação ponto a ponto, ofere
 1. **Segmentação Automática**: Delimitação exata dos contornos de 100% das colônias via **CoralSCOP ViT-B** (modelo treinado especificamente em corais).
 2. **Taxonomia Multi-Escala**: Classificação dos **11 gêneros estritos do Atlântico Sul** via **BioCLIP 2.5 ViT-H/14**, analisando a forma macro da colônia combinada com a textura micro dos coralitos em alta resolução 4K.
 3. **Métricas Físicas Reais**: Homografia de perspectiva por 4 cantos para compensar ângulo e distância da câmera submarina, calculando **área real em cm²** e **% de cobertura**.
-4. **Trabalho por Projetos & Hash Criptográfico**: Criação de projetos estruturados fora do repositório, com validação por hash **SHA-256** para garantir que fotos substituídas não herdem polígonos inválidos.
+4. **Trabalho por Projetos Estruturados**: Criação de projetos organizados fora do repositório, garantindo a integridade e separação de fotos e anotações.
 5. **Processamento em Lote & Exportação**: Execução foto a foto ou em lote com planilha consolidada do projeto (`project_ecological_summary.csv`).
 
 ---
