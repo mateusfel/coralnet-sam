@@ -82,7 +82,7 @@ Ao clicar em **📁 Projetos** no topo do dashboard, você pode criar projetos i
 
 ---
 
-## 🚀 Como Executar
+## ⚙️ Como Executar
 
 ### 1. Iniciar o Servidor GPU no Google Colab
 1. Abra o [Google Colab](https://colab.research.google.com/).
