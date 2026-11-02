@@ -1,4 +1,4 @@
-# CoralSCOP + BioCLIP 2.5 ReefNet 🪸
+# CoralSCOP + BioCLIP 2.5 ReefNet 🌊
 
 > **Segmentação Semântica de Alta Precisão & Classificação Taxonômica de Corais do Atlântico Sul**  
 > *Pipeline Híbrido: Google Colab GPU (Tesla T4) + Dashboard Web Interativo Local (Flask & SVG)*
@@ -7,6 +7,10 @@
 [![Model](https://img.shields.io/badge/Segmentation-CoralSCOP%20ViT--B%20(CVPR%202024)-emerald.svg)](https://github.com/zhengziqiang/CoralSCOP)
 [![Classifier](https://img.shields.io/badge/Taxonomy-BioCLIP%202.5%20ReefNet%20(ViT--H%2F14)-teal.svg)](https://github.com/Imageomics/bioclip)
 [![Status](https://img.shields.io/badge/Status-Fase%206%20Conclu%C3%ADda-brightgreen.svg)]()
+
+<p align="center">
+  <img src="docs/dashboard_preview.png" alt="CoralSCOP + BioCLIP 2.5 Dashboard Interativo" width="100%">
+</p>
 
 ---
 
@@ -41,7 +45,7 @@ O sistema elimina o trabalho manual exaustivo de marcação ponto a ponto, ofere
 
 ---
 
-## 🪸 Taxonomia Suportada (Gêneros do Atlântico Sul)
+## 🏷️ Taxonomia Suportada (Gêneros do Atlântico Sul)
 
 O classificador é restrito exclusivamente aos 11 gêneros de corais construtores e hidrocorais do litoral brasileiro, além do rótulo negativo para descarte:
 
