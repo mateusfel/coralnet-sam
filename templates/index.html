@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CoralSCOP + BioCLIP 2.5 ReefNet — Segmentação e Taxonomia de Corais</title>
-  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261102b">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -53,368 +53,370 @@
 
   <main class="app-layout">
     <!-- Sidebar Controls -->
-    <aside class="sidebar">
-      <!-- 1. Google Colab CoralSCOP + BioCLIP 2.5 Connection -->
-      <section class="card">
-        <div class="card-header">
-          <span class="card-step">1</span>
-          <h2>Servidor GPU (CoralSCOP + BioCLIP 2.5)</h2>
-        </div>
-
-        <div class="form-group">
-          <label for="colab-url-input">URL Pública do Túnel (ngrok ou Localtunnel):</label>
-          <div class="input-with-btn">
-            <input
-              type="url"
-              id="colab-url-input"
-              class="form-control"
-              placeholder="https://xxxx.ngrok-free.dev ou https://xxxx.loca.lt"
-              value=""
-            >
-            <button id="btn-test-colab" class="btn btn-secondary" title="Testar Conexão com o Colab">
-              <span id="btn-test-icon">🔌</span> Testar
-            </button>
-          </div>
-          <small class="help-text" id="colab-help-text">
-            Abra <code>colab/sam_server_colab.ipynb</code> no Colab para rodar CoralSCOP ViT-B + BioCLIP 2.5 ReefNet na Tesla T4.
-          </small>
-        </div>
-      </section>
-
-      <!-- 2. Project Workspace & Survey Images -->
-      <section class="card project-card-section">
-        <div class="card-header">
-          <div class="card-header-title">
-            <span class="card-step">2</span>
-            <h2>Projeto &amp; Fotos do Transecto</h2>
-          </div>
-          <button type="button" id="btn-quick-projects" class="btn btn-outline btn-xs" title="Criar ou alternar projeto local fora do repositório">
-            📁 Projetos
-          </button>
-        </div>
-
-        <!-- Project active info bar -->
-        <div class="project-info-bar">
-          <div class="project-info-text">
-            <span class="project-tag" id="sidebar-project-type">DEMO</span>
-            <strong id="sidebar-project-name" title="Nome do projeto ativo">Modo Demonstração</strong>
-          </div>
-          <div class="project-info-actions">
-            <button type="button" id="btn-download-proj-csv" class="btn btn-outline btn-xs" title="Baixar planilha CSV consolidando todas as fotos com hash verificado deste projeto" style="display: none;">
-              📊 CSV Geral
-            </button>
-          </div>
-        </div>
-        <div class="project-path-subtext" id="sidebar-project-path" title="Caminho raiz do projeto no disco">
-          d:\coralnet-sam\images
-        </div>
-
-        <!-- Batch & Status Summary Badges -->
-        <div class="batch-summary-counts" id="batch-summary-counts">
-          <span class="badge badge-success" id="count-processed-badge" title="Fotos com polígonos válidos salvos">✅ 0 processadas</span>
-          <span class="badge badge-warning" id="count-pending-badge" title="Fotos aguardando CoralSCOP">⏳ 0 pendentes</span>
-          <span class="badge badge-danger" id="count-mismatch-badge" style="display: none;" title="Fotos que foram substituídas por arquivo de mesmo nome">⚠️ 0 alteradas</span>
-        </div>
-
-        <!-- Batch Action Buttons -->
-        <div class="batch-action-bar">
-          <button type="button" id="btn-batch-pending" class="btn btn-secondary btn-xs" title="Processar todas as fotos pendentes do projeto no Colab">
-            ⚡ Lote: Pendentes
-          </button>
-          <button type="button" id="btn-batch-selected" class="btn btn-outline btn-xs" title="Processar apenas as fotos marcadas na lista abaixo">
-            ☑️ Selecionadas (<span id="batch-selected-count">0</span>)
-          </button>
-          <button type="button" id="btn-batch-all" class="btn btn-outline btn-xs" title="Processar ou reprocessar todas as fotos do projeto">
-            🚀 Processar Todas as Fotos
-          </button>
-        </div>
-
-        <!-- Hidden select kept for state synchronization without UI clutter -->
-        <select id="image-select" style="display: none;"></select>
-
-        <!-- Batch photo selection list / checklist with status badges -->
-        <div class="photo-checklist-container">
-          <div class="photo-checklist-header">
-            <label class="photo-select-all-label">
-              <input type="checkbox" id="chk-select-all-photos">
-              <span>Selecionar todas (<span id="photo-total-count">0</span>)</span>
-            </label>
-            <div class="photo-checklist-right-badge">
-              <span class="photo-checklist-sublabel">Ativa:</span>
-              <span id="active-photo-status-badge" class="badge badge-info" style="font-size: 0.68rem; padding: 2px 6px;">Pendente</span>
-            </div>
-          </div>
-          <div class="photo-checklist-items" id="photo-checklist-items">
-            <!-- Gerado via JavaScript -->
-          </div>
-        </div>
-
-        <!-- Thumbnail Strip -->
-        <div class="thumbnail-strip" id="thumbnail-strip">
-          <!-- Miniaturas carregadas via JS -->
-        </div>
-
-        <!-- Multi-file Upload Box -->
-        <div class="upload-box" id="upload-box">
-          <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
-          <button type="button" class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('file-input').click()">
-            📁 Adicionar Fotos ao Projeto (Suporta Múltiplas)
-          </button>
-        </div>
-      </section>
-
-      <!-- 3. Underwater Enhancement, Quadrat ROI & Scale -->
-      <section class="card">
-        <div class="card-header">
-          <span class="card-step">3</span>
-          <h2>Filtro Subaquático &amp; Quadrante</h2>
-        </div>
-
-        <!-- Underwater Optical Filter -->
-        <div class="form-group">
-          <label for="filter-mode-select">Realce Óptico Subaquático (Pré-IA):</label>
-          <select id="filter-mode-select" class="form-control">
-            <option value="combined" selected>✨ Combinado: Balanço de Branco + CLAHE (Recomendado)</option>
-            <option value="wb">🎨 Balanço de Branco (Compensação Cromática)</option>
-            <option value="clahe">🔍 CLAHE (Realce de Textura / LAB)</option>
-            <option value="none">📷 Original (Sem Filtro)</option>
-          </select>
-          <div class="filter-preview-row">
-            <button type="button" id="btn-preview-filter" class="btn btn-outline btn-sm btn-block">
-              👁️ Pré-visualizar Filtro na Foto
-            </button>
-          </div>
-          <small class="help-text">
-            Remove o véu verde/azulado e realça bordas e coralitos antes do CoralSCOP + BioCLIP 2.5.
-          </small>
-        </div>
-
-        <!-- 4-Corner Quadrat Demarcation -->
-        <div class="form-group roi-group-box">
-          <div class="label-with-value">
-            <label style="margin-bottom: 0;">Recorte do Quadrante (4 Cantos):</label>
-            <span id="quadrat-roi-badge" class="roi-status-pill roi-inactive">Foto Inteira</span>
-          </div>
-          <div class="roi-btn-row">
-            <button type="button" id="btn-start-quadrat" class="btn btn-secondary btn-sm" style="flex: 1;">
-              📐 Marcar 4 Cantos
-            </button>
-            <button type="button" id="btn-clear-quadrat" class="btn btn-outline btn-sm" title="Remover marcação dos 4 cantos" style="display: none;">
-              🗑️ Limpar
-            </button>
-          </div>
-          <small class="help-text">
-            Opcional: clique nos 4 cantos internos do PVC (qualquer ângulo/distância) para ignorar canos/corais externos e calibrar os cm² por homografia.
-          </small>
-        </div>
-
-        <!-- Minimum Polygon Area Slider & Direct Number Input -->
-        <div class="form-group">
-          <div class="label-with-value">
-            <label for="min-area-slider">Tamanho Mínimo da Colônia:</label>
-            <div class="min-area-badge-container">
-              <input type="number" id="min-area-input" class="min-area-num-input" min="50" max="100000" step="50" value="1500">
-              <span class="px-unit">px</span>
-            </div>
-          </div>
-          <input
-            type="range"
-            id="min-area-slider"
-            min="100"
-            max="25000"
-            value="1500"
-            step="100"
-            class="slider"
-          >
-          <div class="slider-marks">
-            <span>100px</span>
-            <span>1.500px</span>
-            <span>5.000px</span>
-            <span>15.000px</span>
-            <span>25.000px</span>
-          </div>
-          <small class="help-text">
-            Escala corrigida automaticamente entre a resolução original e a GPU.
-          </small>
-        </div>
-
-        <!-- Physical Scale (cm) -->
-        <div class="form-group">
-          <label>Dimensões Reais do Quadrante (cm):</label>
-          <div class="scale-inputs">
-            <div class="scale-field">
-              <span>L:</span>
-              <input type="number" id="quadrat-w" class="form-control" value="50" min="5" max="500">
-              <span>cm</span>
-            </div>
-            <span class="scale-x">&times;</span>
-            <div class="scale-field">
-              <span>A:</span>
-              <input type="number" id="quadrat-h" class="form-control" value="50" min="5" max="500">
-              <span>cm</span>
-            </div>
-          </div>
-          <small class="help-text">Área física de referência: <strong id="quadrat-area-label">2500 cm²</strong></small>
-        </div>
-
-        <!-- NMS Overlap Threshold -->
-        <div class="form-group">
-          <div class="label-with-value">
-            <label for="iou-slider">Filtro de Sobreposição Poligonal (IoU):</label>
-            <span class="value-badge"><strong id="iou-val">0.60</strong></span>
-          </div>
-          <input type="range" id="iou-slider" min="0.30" max="0.90" value="0.60" step="0.05" class="slider">
-          <small class="help-text">NMS calculado sobre a máscara poligonal real.</small>
-        </div>
-      </section>
-
-      <!-- 4. BioCLIP 2.5 ReefNet & Optional Few-Shot Signature Memory -->
-      <section class="card fewshot-card">
-        <div class="card-header">
-          <span class="card-step">4</span>
-          <h2>BioCLIP 2.5 &amp; Few-Shot (Opcional)</h2>
-        </div>
-
-        <div class="fewshot-toggle-row">
-          <label class="fewshot-switch-label" for="chk-fewshot-enabled">
-            <input type="checkbox" id="chk-fewshot-enabled" checked>
-            <span>Usar Assinaturas Aprendidas (Few-Shot)</span>
-          </label>
-          <span id="fewshot-status-pill" class="roi-status-pill roi-inactive">Zero-Shot Puro</span>
-        </div>
-
-        <div id="fewshot-genera-chips" class="fewshot-chips-box">
-          <span class="fewshot-empty-note">Modo 100% automático (BioCLIP 2.5 ReefNet — somente gêneros de corais). Clique em qualquer polígono no mapa se quiser ensinar um gênero ou filtrar "Não é Coral".</span>
-        </div>
-
-        <div class="roi-btn-row" id="fewshot-actions-row" style="display: none;">
-          <button type="button" id="btn-reclassify-photo" class="btn btn-secondary btn-sm" style="flex: 1;" title="Reaplicar memória Few-Shot na foto aberta sem rodar o Colab">
-            🔄 Reclassificar Foto
-          </button>
-          <button type="button" id="btn-clear-fewshot" class="btn btn-outline btn-sm" title="Apagar todas as assinaturas salvas e voltar ao Zero-Shot puro">
-            🗑️ Limpar
-          </button>
-        </div>
-      </section>
-
-      <!-- 5. Advanced CoralSCOP Hyperparameters Accordion -->
-      <section class="card accordion-card" id="sam-params-card">
-        <div class="card-header accordion-toggle" id="toggle-sam-params" title="Clique para expandir ou recolher os hiperparâmetros do CoralSCOP">
-          <div class="card-header-title">
-            <span class="card-step">⚙️</span>
-            <h2>Hiperparâmetros CoralSCOP (GPU)</h2>
-          </div>
-          <div class="accordion-header-right">
-            <span class="accordion-badge">Calibrado</span>
-            <span class="accordion-arrow" id="sam-accordion-arrow">▾</span>
-          </div>
-        </div>
-
-        <div class="accordion-content" id="sam-params-content" style="display: none;">
-          <!-- Points Per Side -->
-          <div class="form-group">
-            <div class="label-with-value">
-              <label for="sam-points-per-side">Grade de Sondagem (points_per_side):</label>
-              <span class="value-badge"><strong id="sam-points-val">32</strong> (<span id="sam-points-total">1.024</span> pts)</span>
-            </div>
-            <select id="sam-points-per-side" class="form-control">
-              <option value="16">16 (256 pontos &bull; Muito Rápido)</option>
-              <option value="24">24 (576 pontos &bull; Rápido)</option>
-              <option value="32" selected>32 (1.024 pontos &bull; Padrão Oficial CoralSCOP)</option>
-              <option value="48">48 (2.304 pontos &bull; Recrutas pequenos)</option>
-              <option value="64">64 (4.096 pontos &bull; Ultra-denso)</option>
-            </select>
-            <small class="help-text">32 pontos/lado é o padrão oficial do artigo CoralSCOP para colônias inteiras.</small>
-          </div>
-
-          <!-- Pred IoU Thresh -->
-          <div class="form-group">
-            <div class="label-with-value">
-              <label for="sam-pred-iou-slider">Confiança de Coral (pred_iou):</label>
-              <span class="value-badge"><strong id="sam-pred-iou-val">0.72</strong></span>
-            </div>
-            <input type="range" id="sam-pred-iou-slider" min="0.50" max="0.96" value="0.72" step="0.02" class="slider">
-            <small class="help-text">Padrão oficial CoralSCOP: <code>0.72</code> (mais sensível a colônias maciças subaquáticas).</small>
-          </div>
-
-          <!-- Stability Score Thresh -->
-          <div class="form-group">
-            <div class="label-with-value">
-              <label for="sam-stability-slider">Estabilidade de Borda (stability_score):</label>
-              <span class="value-badge"><strong id="sam-stability-val">0.62</strong></span>
-            </div>
-            <input type="range" id="sam-stability-slider" min="0.45" max="0.96" value="0.62" step="0.02" class="slider">
-            <small class="help-text">Padrão oficial CoralSCOP: <code>0.62</code> (captura bordas orgânicas sob turbidez).</small>
-          </div>
-
-          <!-- Multi-scale Crop Layers -->
-          <div class="form-group">
-            <div class="label-with-value">
-              <label for="sam-crop-layers">Camadas de Zoom (crop_n_layers):</label>
-              <span class="value-badge"><strong id="sam-crop-layers-val">1</strong> nível</span>
-            </div>
-            <select id="sam-crop-layers" class="form-control">
-              <option value="0">0 (Apenas imagem inteira &bull; ~6s na T4)</option>
-              <option value="1" selected>1 (Imagem + 4 sub-regiões &bull; Recomendado)</option>
-              <option value="2">2 (16 recortes com zoom &bull; Lento)</option>
-            </select>
-            <small class="help-text">Combina visão macro de colônias grandes com zoom para colônias menores.</small>
-          </div>
-
-          <!-- Crop Points Downscale Factor -->
-          <div class="form-group">
-            <div class="label-with-value">
-              <label for="sam-crop-downscale">Redução de Pontos no Zoom:</label>
-              <span class="value-badge"><strong id="sam-crop-downscale-val">2</strong>x</span>
-            </div>
-            <select id="sam-crop-downscale" class="form-control">
-              <option value="1">1 (Mesma densidade nos recortes)</option>
-              <option value="2" selected>2 (Redução pela metade &bull; Recomendado)</option>
-            </select>
-            <small class="help-text">Evita super-fragmentação de pólipos nos quadrantes de zoom.</small>
-          </div>
-
-          <!-- Reset Button -->
-          <button type="button" id="btn-reset-sam-params" class="btn btn-outline btn-sm btn-block" style="margin-bottom: 0.85rem;">
-            ↺ Restaurar Padrões Oficiais do CoralSCOP
-          </button>
-
-          <!-- Practical CoralSCOP + BioCLIP Tuning Guide -->
-          <div class="tuning-guide-box">
-            <div class="tuning-guide-header">
-              <span class="tuning-guide-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 21V12M12 15C9 15 6.8 12.8 6.8 9.8V7.2M6.8 10C5 10 3.8 8.7 3.8 6.8V5.2M12 13.2C15 13.2 17.3 11.1 17.3 8V5.8M17.3 8.8C19 8.8 20.2 7.5 20.2 5.8V4.4M12 12V5"
-                        stroke="#fb7185" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
-              <strong>Guia Prático — CoralSCOP + BioCLIP 2.5</strong>
-            </div>
-            <ul class="tuning-guide-list">
-              <li>
-                <strong>Somente Gêneros de Corais:</strong>
-                <span>O BioCLIP 2.5 ReefNet avalia cada colônia em <em>Multi-Escala</em> (forma Macro + coralitos Micro <code>224×224</code> em 4K) exclusivamente entre os 11 gêneros de corais.</span>
-              </li>
-              <li>
-                <strong>Agrupar Polígonos &amp; Filtro "Não é Coral":</strong>
-                <span>Segure <em>Shift + Clique</em> (ou use o botão de seleção no inspetor) para agrupar polígonos do mesmo gênero em 1 colônia, ou ensine <em>Não é Coral</em> para filtrar falsos positivos automaticamente.</span>
-              </li>
-              <li>
-                <strong>Navegação com Zoom e Arraste:</strong>
-                <span>Use o <em>scroll do mouse</em> para dar zoom nos coralitos e arraste a foto livremente para qualquer lado. Pressione <code>V</code> para ocultar/exibir polígonos rapidamente.</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <!-- Action Button Container -->
-      <section class="card action-card">
-        <button id="btn-run" class="btn btn-primary btn-block btn-lg">
-          <span class="btn-icon">⚡</span>
-          <span id="btn-run-text">Executar CoralSCOP ➔ BioCLIP 2.5</span>
+    <aside class="sidebar" id="sidebar">
+      <!-- VS Code style Activity Tab Bar (Top) -->
+      <div class="sidebar-activity-bar" id="sidebar-activity-bar">
+        <!-- 1. Colab Server Tab -->
+        <button type="button" class="activity-tab-btn" data-tab="tab-colab" id="tab-btn-colab" title="Conexão com Servidor Colab (GPU CoralSCOP &amp; BioCLIP 2.5)">
+          <span class="activity-tab-icon">🔌</span>
+          <span class="tab-status-dot dot-offline" id="colab-status-dot" title="Desconectado"></span>
         </button>
-      </section>
+
+        <!-- 2. Optical Filters & Scale Tab -->
+        <button type="button" class="activity-tab-btn" data-tab="tab-filters" id="tab-btn-filters" title="Realce Óptico Subaquático &amp; Dimensões do PVC">
+          <span class="activity-tab-icon">🎨</span>
+        </button>
+
+        <!-- 3. Segmentation & Taxonomic Model Tab -->
+        <button type="button" class="activity-tab-btn" data-tab="tab-model" id="tab-btn-model" title="Hiperparâmetros CoralSCOP &amp; BioCLIP 2.5 ReefNet">
+          <span class="activity-tab-icon">⚙️</span>
+        </button>
+
+        <!-- 4. Photos Explorer & Batch Execution Tab (Default Active) -->
+        <button type="button" class="activity-tab-btn active" data-tab="tab-photos" id="tab-btn-photos" title="Fotos do Transecto &amp; Execução em Lote">
+          <span class="activity-tab-icon">🖼️</span>
+          <span class="activity-tab-badge" id="activity-photos-count">0</span>
+        </button>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div class="sidebar-tab-content-container">
+
+        <!-- ==========================================
+             TAB 1: CONEXÃO COM O SERVIDOR DO COLAB
+             ========================================== -->
+        <div class="sidebar-tab-pane" id="tab-pane-colab">
+          <div class="tab-pane-header">
+            <h3>🔌 Conexão GPU (Colab)</h3>
+          </div>
+          <section class="card">
+            <div class="form-group">
+              <label for="colab-url-input">URL Pública do Túnel (ngrok ou Localtunnel):</label>
+              <div class="input-with-btn">
+                <input
+                  type="url"
+                  id="colab-url-input"
+                  class="form-control"
+                  placeholder="https://xxxx.ngrok-free.dev ou https://xxxx.loca.lt"
+                  value=""
+                >
+                <button id="btn-test-colab" class="btn btn-secondary" title="Testar Conexão com o Colab">
+                  <span id="btn-test-icon">🔌</span> Testar
+                </button>
+              </div>
+              <small class="help-text" id="colab-help-text">
+                Abra <code>colab/sam_server_colab.ipynb</code> no Colab para rodar CoralSCOP ViT-B + BioCLIP 2.5 ReefNet na Tesla T4.
+              </small>
+            </div>
+
+            <div class="colab-status-card" id="colab-status-details-box">
+              <div class="colab-status-row">
+                <span class="text-muted">Status do Servidor:</span>
+                <span id="colab-status-badge" class="badge badge-offline">Desconectado</span>
+              </div>
+              <div class="colab-status-hint">
+                Ponto vermelho no canto do ícone indica desconexão ou falha. Ponto verde indica GPU online e pronta.
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ==========================================
+             TAB 2: CONFIGURAÇÃO DOS FILTROS ÓPTICOS & ESCALA
+             ========================================== -->
+        <div class="sidebar-tab-pane" id="tab-pane-filters">
+          <div class="tab-pane-header">
+            <h3>🎨 Realce Óptico &amp; Dimensões</h3>
+          </div>
+          <section class="card">
+            <!-- Underwater Optical Filter -->
+            <div class="form-group">
+              <label for="filter-mode-select">Realce Óptico Subaquático (Pré-IA):</label>
+              <select id="filter-mode-select" class="form-control">
+                <option value="combined" selected>✨ Combinado: Balanço de Branco + CLAHE (Recomendado)</option>
+                <option value="wb">🎨 Balanço de Branco (Compensação Cromática)</option>
+                <option value="clahe">🔍 CLAHE (Realce de Textura / LAB)</option>
+                <option value="none">📷 Original (Sem Filtro)</option>
+              </select>
+              <div class="filter-preview-row">
+                <button type="button" id="btn-preview-filter" class="btn btn-outline btn-sm btn-block">
+                  👁️ Pré-visualizar Filtro na Foto
+                </button>
+              </div>
+              <small class="help-text">
+                Remove o véu verde/azulado e realça bordas e coralitos antes do CoralSCOP + BioCLIP 2.5.
+              </small>
+            </div>
+
+            <!-- Physical Scale (cm) -->
+            <div class="form-group" style="margin-top: 14px;">
+              <label>Dimensões Reais do Quadrante de PVC (cm):</label>
+              <div class="scale-inputs">
+                <div class="scale-field">
+                  <span>L:</span>
+                  <input type="number" id="quadrat-w" class="form-control" value="50" min="5" max="500">
+                  <span>cm</span>
+                </div>
+                <span class="scale-x">&times;</span>
+                <div class="scale-field">
+                  <span>A:</span>
+                  <input type="number" id="quadrat-h" class="form-control" value="50" min="5" max="500">
+                  <span>cm</span>
+                </div>
+              </div>
+              <small class="help-text">Área de referência: <strong id="quadrat-area-label">2500 cm²</strong> (usada pelo botão de demarcação 4 cantos no topo da foto).</small>
+            </div>
+          </section>
+        </div>
+
+        <!-- ==========================================
+             TAB 3: CONFIGURAÇÕES DO MODELO DE SEGMENTAÇÃO
+             ========================================== -->
+        <div class="sidebar-tab-pane" id="tab-pane-model">
+          <div class="tab-pane-header">
+            <h3>⚙️ Hiperparâmetros &amp; IA</h3>
+          </div>
+
+          <!-- Minimum Colony Area & IoU -->
+          <section class="card">
+            <div class="form-group">
+              <div class="label-with-value">
+                <label for="min-area-slider">Tamanho Mínimo da Colônia:</label>
+                <div class="min-area-badge-container">
+                  <input type="number" id="min-area-input" class="min-area-num-input" min="50" max="100000" step="50" value="1500">
+                  <span class="px-unit">px</span>
+                </div>
+              </div>
+              <input
+                type="range"
+                id="min-area-slider"
+                min="100"
+                max="25000"
+                value="1500"
+                step="100"
+                class="slider"
+              >
+              <div class="slider-marks">
+                <span>100px</span>
+                <span>1.500px</span>
+                <span>5.000px</span>
+                <span>15.000px</span>
+                <span>25.000px</span>
+              </div>
+              <small class="help-text">
+                Escala corrigida automaticamente entre a resolução original e a GPU.
+              </small>
+            </div>
+
+            <!-- NMS Overlap Threshold -->
+            <div class="form-group">
+              <div class="label-with-value">
+                <label for="iou-slider">Filtro de Sobreposição Poligonal (IoU):</label>
+                <span class="value-badge"><strong id="iou-val">0.60</strong></span>
+              </div>
+              <input type="range" id="iou-slider" min="0.30" max="0.90" value="0.60" step="0.05" class="slider">
+              <small class="help-text">NMS calculado sobre a máscara poligonal real.</small>
+            </div>
+          </section>
+
+          <!-- CoralSCOP Parameters -->
+          <section class="card accordion-card" id="sam-params-card">
+            <div class="card-header accordion-toggle" id="toggle-sam-params" title="Clique para expandir ou recolher os hiperparâmetros do CoralSCOP">
+              <div class="card-header-title">
+                <span class="card-step">🪸</span>
+                <h2>Parâmetros GPU (CoralSCOP)</h2>
+              </div>
+              <div class="accordion-header-right">
+                <span class="accordion-badge">Calibrado</span>
+                <span class="accordion-arrow" id="sam-accordion-arrow">▾</span>
+              </div>
+            </div>
+
+            <div class="accordion-content" id="sam-params-content" style="display: none;">
+              <!-- Points Per Side -->
+              <div class="form-group">
+                <div class="label-with-value">
+                  <label for="sam-points-per-side">Grade de Sondagem (points_per_side):</label>
+                  <span class="value-badge"><strong id="sam-points-val">32</strong> (<span id="sam-points-total">1.024</span> pts)</span>
+                </div>
+                <select id="sam-points-per-side" class="form-control">
+                  <option value="16">16 (256 pontos &bull; Muito Rápido)</option>
+                  <option value="24">24 (576 pontos &bull; Rápido)</option>
+                  <option value="32" selected>32 (1.024 pontos &bull; Padrão Oficial CoralSCOP)</option>
+                  <option value="48">48 (2.304 pontos &bull; Recrutas pequenos)</option>
+                  <option value="64">64 (4.096 pontos &bull; Ultra-denso)</option>
+                </select>
+                <small class="help-text">32 pontos/lado é o padrão oficial do artigo CoralSCOP para colônias inteiras.</small>
+              </div>
+
+              <!-- Pred IoU Thresh -->
+              <div class="form-group">
+                <div class="label-with-value">
+                  <label for="sam-pred-iou-slider">Confiança de Coral (pred_iou):</label>
+                  <span class="value-badge"><strong id="sam-pred-iou-val">0.72</strong></span>
+                </div>
+                <input type="range" id="sam-pred-iou-slider" min="0.50" max="0.96" value="0.72" step="0.02" class="slider">
+                <small class="help-text">Padrão oficial CoralSCOP: <code>0.72</code> (mais sensível a colônias maciças subaquáticas).</small>
+              </div>
+
+              <!-- Stability Score Thresh -->
+              <div class="form-group">
+                <div class="label-with-value">
+                  <label for="sam-stability-slider">Estabilidade de Borda (stability_score):</label>
+                  <span class="value-badge"><strong id="sam-stability-val">0.62</strong></span>
+                </div>
+                <input type="range" id="sam-stability-slider" min="0.45" max="0.96" value="0.62" step="0.02" class="slider">
+                <small class="help-text">Padrão oficial CoralSCOP: <code>0.62</code> (captura bordas orgânicas sob turbidez).</small>
+              </div>
+
+              <!-- Multi-scale Crop Layers -->
+              <div class="form-group">
+                <div class="label-with-value">
+                  <label for="sam-crop-layers">Camadas de Zoom (crop_n_layers):</label>
+                  <span class="value-badge"><strong id="sam-crop-layers-val">1</strong> nível</span>
+                </div>
+                <select id="sam-crop-layers" class="form-control">
+                  <option value="0">0 (Apenas imagem inteira &bull; ~6s na T4)</option>
+                  <option value="1" selected>1 (Imagem + 4 sub-regiões &bull; Recomendado)</option>
+                  <option value="2">2 (16 recortes com zoom &bull; Lento)</option>
+                </select>
+                <small class="help-text">Combina visão macro de colônias grandes com zoom para colônias menores.</small>
+              </div>
+
+              <!-- Crop Points Downscale Factor -->
+              <div class="form-group">
+                <div class="label-with-value">
+                  <label for="sam-crop-downscale">Redução de Pontos no Zoom:</label>
+                  <span class="value-badge"><strong id="sam-crop-downscale-val">2</strong>x</span>
+                </div>
+                <select id="sam-crop-downscale" class="form-control">
+                  <option value="1">1 (Mesma densidade nos recortes)</option>
+                  <option value="2" selected>2 (Redução pela metade &bull; Recomendado)</option>
+                </select>
+                <small class="help-text">Evita super-fragmentação de pólipos nos quadrantes de zoom.</small>
+              </div>
+
+              <!-- Reset Button -->
+              <button type="button" id="btn-reset-sam-params" class="btn btn-outline btn-sm btn-block" style="margin-bottom: 0.85rem;">
+                ↺ Restaurar Padrões Oficiais do CoralSCOP
+              </button>
+            </div>
+          </section>
+
+          <!-- BioCLIP 2.5 & Few-Shot -->
+          <section class="card fewshot-card">
+            <div class="card-header">
+              <span class="card-step">🧬</span>
+              <h2>BioCLIP 2.5 &amp; Few-Shot</h2>
+            </div>
+
+            <div class="fewshot-toggle-row">
+              <label class="fewshot-switch-label" for="chk-fewshot-enabled">
+                <input type="checkbox" id="chk-fewshot-enabled" checked>
+                <span>Usar Assinaturas Aprendidas (Few-Shot)</span>
+              </label>
+              <span id="fewshot-status-pill" class="roi-status-pill roi-inactive">Zero-Shot Puro</span>
+            </div>
+
+            <div id="fewshot-genera-chips" class="fewshot-chips-box">
+              <span class="fewshot-empty-note">Modo 100% automático (BioCLIP 2.5 ReefNet — somente gêneros de corais). Clique em qualquer polígono no mapa se quiser ensinar um gênero ou filtrar "Não é Coral".</span>
+            </div>
+
+            <div class="roi-btn-row" id="fewshot-actions-row" style="display: none;">
+              <button type="button" id="btn-reclassify-photo" class="btn btn-secondary btn-sm" style="flex: 1;" title="Reaplicar memória Few-Shot na foto aberta sem rodar o Colab">
+                🔄 Reclassificar Foto
+              </button>
+              <button type="button" id="btn-clear-fewshot" class="btn btn-outline btn-sm" title="Apagar todas as assinaturas salvas e voltar ao Zero-Shot puro">
+                🗑️ Limpar
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <!-- ==========================================
+             TAB 4: NAVEGAÇÃO ENTRE FOTOS (EXPLORER PRINCIPAL)
+             ========================================== -->
+        <div class="sidebar-tab-pane active" id="tab-pane-photos">
+          <!-- Project Info Bar -->
+          <div class="project-info-bar">
+            <div class="project-info-text">
+              <span class="project-tag" id="sidebar-project-type">DEMO</span>
+              <strong id="sidebar-project-name" title="Nome do projeto ativo">Modo Demonstração</strong>
+            </div>
+            <div class="project-info-actions">
+              <button type="button" id="btn-quick-projects" class="btn btn-outline btn-xs" title="Criar ou alternar projeto local fora do repositório">
+                📁 Projetos
+              </button>
+              <button type="button" id="btn-download-proj-csv" class="btn btn-outline btn-xs" title="Baixar planilha CSV consolidando todas as fotos com hash verificado deste projeto" style="display: none;">
+                📊 CSV Geral
+              </button>
+            </div>
+          </div>
+          <div class="project-path-subtext" id="sidebar-project-path" title="Caminho raiz do projeto no disco">
+            d:\coralnet-sam\images
+          </div>
+
+          <!-- Batch & Status Summary Badges -->
+          <div class="batch-summary-counts" id="batch-summary-counts">
+            <span class="badge badge-success" id="count-processed-badge" title="Fotos com polígonos válidos salvos">✅ 0 processadas</span>
+            <span class="badge badge-warning" id="count-pending-badge" title="Fotos aguardando CoralSCOP">⏳ 0 pendentes</span>
+            <span class="badge badge-danger" id="count-mismatch-badge" style="display: none;" title="Fotos que foram substituídas por arquivo de mesmo nome">⚠️ 0 alteradas</span>
+          </div>
+
+          <!-- Batch Action Buttons -->
+          <div class="batch-action-bar">
+            <button type="button" id="btn-batch-pending" class="btn btn-secondary btn-xs" title="Processar todas as fotos pendentes do projeto no Colab">
+              ⚡ Lote: Pendentes
+            </button>
+            <button type="button" id="btn-batch-selected" class="btn btn-outline btn-xs" title="Processar apenas as fotos marcadas na lista abaixo">
+              ☑️ Selecionadas (<span id="batch-selected-count">0</span>)
+            </button>
+            <button type="button" id="btn-batch-all" class="btn btn-outline btn-xs" title="Processar ou reprocessar todas as fotos do projeto">
+              🚀 Todas
+            </button>
+          </div>
+
+          <!-- Hidden select for JS state sync -->
+          <select id="image-select" style="display: none;"></select>
+
+          <!-- Large vertical photo checklist occupying main sidebar height -->
+          <div class="photo-checklist-container photo-checklist-expanded">
+            <div class="photo-checklist-header">
+              <label class="photo-select-all-label">
+                <input type="checkbox" id="chk-select-all-photos">
+                <span>Selecionar todas (<span id="photo-total-count">0</span>)</span>
+              </label>
+              <div class="photo-checklist-right-badge">
+                <span class="photo-checklist-sublabel">Ativa:</span>
+                <span id="active-photo-status-badge" class="badge badge-info" style="font-size: 0.68rem; padding: 2px 6px;">Pendente</span>
+              </div>
+            </div>
+            <div class="photo-checklist-items" id="photo-checklist-items">
+              <!-- Rendered by JavaScript with mini-thumbnails and 3 pipeline badges -->
+            </div>
+          </div>
+
+          <!-- Hidden thumbnail strip preserved for backward-compatibility -->
+          <div class="thumbnail-strip" id="thumbnail-strip" style="display: none;"></div>
+
+          <!-- Upload and Add Photos -->
+          <div class="upload-box" id="upload-box">
+            <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
+            <button type="button" class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('file-input').click()">
+              📁 Adicionar Fotos ao Projeto
+            </button>
+          </div>
+
+          <!-- Primary Execution Button at the bottom of Photos Tab -->
+          <div class="photo-tab-footer-actions">
+            <button id="btn-run" class="btn btn-primary btn-block btn-lg">
+              <span class="btn-icon">⚡</span>
+              <span id="btn-run-text">Executar CoralSCOP ➔ BioCLIP 2.5</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
     </aside>
 
     <!-- Main Workspace -->
@@ -426,6 +428,17 @@
           <span id="colony-count-badge" class="badge badge-count" style="display: none;">0 colônias</span>
         </div>
         <div class="toolbar-right">
+          <!-- Quadrat Demarcation Controls (Solução 1: Na Barra Superior do Canvas) -->
+          <div class="quadrat-toolbar-group" id="quadrat-toolbar-group">
+            <button type="button" id="btn-start-quadrat" class="btn btn-secondary btn-sm" title="Marcar os 4 cantos internos do PVC para calibrar a escala homográfica">
+              📐 Marcar 4 Cantos
+            </button>
+            <button type="button" id="btn-clear-quadrat" class="btn btn-outline btn-sm" title="Remover marcação dos 4 cantos" style="display: none;">
+              🗑️ Limpar
+            </button>
+            <span id="quadrat-roi-badge" class="roi-status-pill roi-inactive">Foto Inteira</span>
+          </div>
+
           <!-- Post-processing Polygon Visibility & Manual Demarcation Controls -->
           <div id="polygon-visibility-controls" class="polygon-vis-group" style="display: none;">
             <button type="button" id="btn-draw-polygon" class="btn btn-primary btn-sm" title="Demarcar manualmente um coral não contornado pela IA (Atalho: tecla N)">
@@ -956,6 +969,6 @@
     </div>
   </div>
 
-  <script src="/static/js/main.js"></script>
+  <script src="/static/js/main.js?v=20261102f"></script>
 </body>
 </html>

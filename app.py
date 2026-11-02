@@ -90,6 +90,8 @@ def log_event(message: str, level: str = "INFO"):
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 128 * 1024 * 1024  # 128 MB max upload (supports multi-photo upload)
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 VALID_EXTENSIONS = VALID_IMAGE_EXTENSIONS
 
@@ -172,8 +174,8 @@ def _scan_workspace_images(ws):
                 "previous_sha256_short": (st["previous_sha256"] or "")[:12] if st["hash_mismatch"] else "",
                 "total_colonies": int(sess.get("total_colonies", 0)) if status_code == "processed" else 0,
                 "total_coral_cm2": float(sess.get("total_coral_cm2", 0.0)) if status_code == "processed" else 0.0,
-                "total_coral_cover_pct": float(sess.get("total_coral_cover_pct", 0.0)) if status_code == "processed" else 0.0,
-                "has_quadrat_roi": bool(sess.get("has_quadrat_roi", False)) if status_code == "processed" else False,
+                "has_quadrat_roi": bool(sess.get("has_quadrat_roi", False) or bool(sess.get("quadrat_corners"))) if status_code == "processed" else False,
+                "filter_mode": sess.get("filter_mode", "none") if status_code == "processed" else "none",
             })
 
     return files, counts

@@ -877,6 +877,22 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function updateColabStatusDot(status) {
+    const dot = document.getElementById("colab-status-dot");
+    if (!dot) return;
+    dot.className = "tab-status-dot";
+    if (status === "online") {
+      dot.classList.add("dot-online");
+      dot.title = "Colab Online (GPU Conectada)";
+    } else if (status === "busy" || status === "warning") {
+      dot.classList.add("dot-busy");
+      dot.title = "Colab Ocupado / Atenção";
+    } else {
+      dot.classList.add("dot-offline");
+      dot.title = "Colab Desconectado";
+    }
+  }
+
   // =========================================================================
   // 5. COLAB GPU HEALTH CHECK
   // =========================================================================
@@ -885,12 +901,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!url) {
       colabStatusBadge.className = "badge badge-offline";
       colabStatusText.textContent = "Colab GPU: Nenhuma URL";
+      updateColabStatusDot("offline");
       return;
     }
 
     localStorage.setItem("coralscop_colab_url", url);
     colabStatusText.textContent = "Verificando...";
     btnTestColab.disabled = true;
+    updateColabStatusDot("busy");
 
     try {
       const resp = await fetch("/api/test-colab", {
@@ -904,6 +922,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (data.is_coralscop && data.has_bioclip) {
           colabStatusBadge.className = "badge badge-online";
           colabStatusText.textContent = `🟢 CoralSCOP + BioCLIP Online (${data.gpu_name || "Tesla T4"})`;
+          updateColabStatusDot("online");
           if (bioclipStatusBadge && bioclipStatusText) {
             bioclipStatusBadge.className = "badge badge-online";
             bioclipStatusText.textContent = `🧬 ${data.classifier_model || "BioCLIP 2.5 ReefNet"}`;
@@ -911,6 +930,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (data.is_coralscop && !data.has_bioclip) {
           colabStatusBadge.className = "badge badge-warning";
           colabStatusText.textContent = "🟡 CoralSCOP sem BioCLIP (Atualize o notebook no Colab)";
+          updateColabStatusDot("warning");
           if (bioclipStatusBadge && bioclipStatusText) {
             bioclipStatusBadge.className = "badge badge-warning";
             bioclipStatusText.textContent = "Atualize o Colab p/ BioCLIP 2.5";
@@ -918,14 +938,17 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           colabStatusBadge.className = "badge badge-warning";
           colabStatusText.textContent = `🟡 ${data.model || "Servidor Antigo"} (Atualize o Colab)`;
+          updateColabStatusDot("warning");
         }
       } else {
         colabStatusBadge.className = "badge badge-offline";
         colabStatusText.textContent = "🔴 Servidor Inacessível";
+        updateColabStatusDot("offline");
       }
     } catch (err) {
       colabStatusBadge.className = "badge badge-offline";
       colabStatusText.textContent = "🔴 Erro de Conexão";
+      updateColabStatusDot("offline");
     } finally {
       btnTestColab.disabled = false;
     }
@@ -2489,6 +2512,37 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isEditingVertices) {
       renderVertexEditOverlay();
     }
+
+    // 4. URL Param Highlight Tooltip
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightId = urlParams.get("highlight");
+    if (highlightId && currentResult && currentResult.colonies && currentResult.colonies.length > 0) {
+      const colId = parseInt(highlightId, 10);
+      const col = currentResult.colonies.find((c) => c.id === colId);
+      if (col) {
+        const polyEl = stageSvg.querySelector(`.colony-polygon[data-id="${colId}"]`);
+        if (polyEl) {
+          polyEl.classList.add("selected-colony");
+          polyEl.style.stroke = "#ffffff";
+          polyEl.style.strokeWidth = "8px";
+          setTimeout(() => {
+            const stageRect = interactiveStage.getBoundingClientRect();
+            colonyTooltip.innerHTML = `
+              <div class="tooltip-genus">
+                <span class="tooltip-color-dot" style="background-color: ${col.color};"></span>
+                #${col.id} ${col.genus}
+              </div>
+              <div>Área Real: <strong>${col.area_cm2} cm²</strong> (${col.area_pct}%)</div>
+              <div>🧠 BioCLIP + Few-Shot: <strong>${(col.confidence * 100).toFixed(1)}%</strong></div>
+              <div style="font-size: 0.7rem; color: #38bdf8; margin-top: 2px;">Clique p/ editar ou ajustar borda &bull; Shift+Clique p/ agrupar</div>
+            `;
+            colonyTooltip.style.setProperty("display", "block", "important");
+            colonyTooltip.style.left = `${stageRect.width * 0.58}px`;
+            colonyTooltip.style.top = `${stageRect.height * 0.26}px`;
+          }, 350);
+        }
+      }
+    }
   }
 
   async function showImageInStage(filename, skipSessionCheck = false) {
@@ -2865,6 +2919,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (photoTotalCount) photoTotalCount.textContent = workspaceImages.length;
     if (batchSelectedCount) batchSelectedCount.textContent = selectedForBatch.size;
 
+    const activityPhotosCount = document.getElementById("activity-photos-count");
+    if (activityPhotosCount) activityPhotosCount.textContent = workspaceImages.length;
+
     const currentSelectedImg = imageSelect ? imageSelect.value : "";
 
     workspaceImages.forEach((img) => {
@@ -2889,16 +2946,76 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
+      // Mini Thumbnail
+      const thumbImg = document.createElement("img");
+      thumbImg.className = "photo-item-thumb";
+      thumbImg.src = img.url;
+      thumbImg.alt = img.filename;
+      thumbImg.loading = "lazy";
+
+      // Info Block
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "photo-item-info";
+
+      const titleRow = document.createElement("div");
+      titleRow.className = "photo-item-title-row";
+
       const nameSpan = document.createElement("span");
       nameSpan.className = "photo-item-name";
-      nameSpan.textContent = `${img.filename} (${img.size_mb} MB)`;
+      nameSpan.textContent = img.filename;
+      nameSpan.title = img.filename;
 
-      const badgeDiv = document.createElement("div");
-      badgeDiv.innerHTML = getStatusBadgeHtml(img.status);
+      const sizeSpan = document.createElement("span");
+      sizeSpan.className = "photo-item-size";
+      sizeSpan.textContent = `${img.size_mb} MB`;
+
+      titleRow.appendChild(nameSpan);
+      titleRow.appendChild(sizeSpan);
+
+      // 3 Pipeline Badges: 🎨 Filter, 📐 Quadrat, 🪸 AI
+      const badgesRow = document.createElement("div");
+      badgesRow.className = "photo-pipeline-badges";
+
+      // 1. Filter Badge (🎨)
+      const hasFilter = img.filter_mode && img.filter_mode !== "none";
+      const filterBadge = document.createElement("span");
+      filterBadge.className = `pipe-badge ${hasFilter ? "pipe-active" : "pipe-muted"}`;
+      filterBadge.title = hasFilter ? `Filtro aplicado: ${img.filter_mode}` : "Foto original (sem filtro)";
+      filterBadge.textContent = hasFilter ? "🎨 Realce" : "🎨 Orig.";
+
+      // 2. Quadrat Badge (📐)
+      const hasQuad = img.has_quadrat_roi;
+      const quadBadge = document.createElement("span");
+      quadBadge.className = `pipe-badge ${hasQuad ? "pipe-active" : "pipe-muted"}`;
+      quadBadge.title = hasQuad ? "Quadrante 4 cantos calibrado por homografia" : "Foto inteira (sem recorte de PVC)";
+      quadBadge.textContent = hasQuad ? "📐 PVC 4C" : "📐 Geral";
+
+      // 3. AI / Segmentation Badge (🪸)
+      const aiBadge = document.createElement("span");
+      if (img.status === "processed") {
+        aiBadge.className = "pipe-badge pipe-success";
+        aiBadge.title = `${img.total_colonies} colônias segmentadas e classificadas`;
+        aiBadge.textContent = `🪸 ${img.total_colonies} col.`;
+      } else if (img.status === "hash_mismatch") {
+        aiBadge.className = "pipe-badge pipe-danger";
+        aiBadge.title = "Arquivo de imagem alterado no disco (hash diferente)";
+        aiBadge.textContent = "⚠️ Alterada";
+      } else {
+        aiBadge.className = "pipe-badge pipe-pending";
+        aiBadge.title = "Aguardando processamento no CoralSCOP + BioCLIP 2.5";
+        aiBadge.textContent = "⏳ Pendente";
+      }
+
+      badgesRow.appendChild(filterBadge);
+      badgesRow.appendChild(quadBadge);
+      badgesRow.appendChild(aiBadge);
+
+      infoDiv.appendChild(titleRow);
+      infoDiv.appendChild(badgesRow);
 
       item.appendChild(chk);
-      item.appendChild(nameSpan);
-      item.appendChild(badgeDiv.firstElementChild);
+      item.appendChild(thumbImg);
+      item.appendChild(infoDiv);
 
       item.addEventListener("click", () => {
         if (imageSelect) imageSelect.value = img.filename;
@@ -3069,7 +3186,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Determine which image to select
         let target = null;
-        if (preferredImage && workspaceImages.some((i) => i.filename === preferredImage)) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const requestedImg = urlParams.get("image");
+        if (requestedImg && workspaceImages.some((i) => i.filename === requestedImg)) {
+          target = requestedImg;
+        } else if (preferredImage && workspaceImages.some((i) => i.filename === preferredImage)) {
           target = preferredImage;
         } else if (prevVal && workspaceImages.some((i) => i.filename === prevVal)) {
           target = prevVal;
@@ -3088,6 +3209,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (imageSelect && imageSelect.value && !skipCanvasLoad) {
         await showImageInStage(imageSelect.value);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightId = urlParams.get("highlight");
+        if (highlightId && state.polygonData && state.polygonData.colonies) {
+          const colId = parseInt(highlightId, 10);
+          const col = state.polygonData.colonies.find((c) => c.id === colId);
+          if (col) {
+            const polyEl = document.querySelector(`.colony-polygon[data-id="${colId}"]`);
+            if (polyEl) {
+              polyEl.classList.add("selected-colony");
+              const stageRect = interactiveStage.getBoundingClientRect();
+              colonyTooltip.innerHTML = `
+                <div class="tooltip-genus">
+                  <span class="tooltip-color-dot" style="background-color: ${col.color};"></span>
+                  #${col.id} ${col.genus}
+                </div>
+                <div>Área Real: <strong>${col.area_cm2} cm²</strong> (${col.area_pct}%)</div>
+                <div>🧠 BioCLIP + Few-Shot: <strong>${(col.confidence * 100).toFixed(1)}%</strong></div>
+                <div style="font-size: 0.7rem; color: #38bdf8; margin-top: 2px;">Clique p/ editar ou ajustar borda &bull; Shift+Clique p/ agrupar</div>
+              `;
+              colonyTooltip.style.display = "block";
+              colonyTooltip.style.left = `${stageRect.width * 0.48}px`;
+              colonyTooltip.style.top = `${stageRect.height * 0.16}px`;
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Erro ao carregar projeto e fotos:", err);
@@ -4043,6 +4190,31 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 2000);
       });
     });
+  }
+
+  // =========================================================================
+  // VS CODE STYLE SIDEBAR ACTIVITY TABS
+  // =========================================================================
+  const activityTabBtns = document.querySelectorAll(".activity-tab-btn");
+  const sidebarTabPanes = document.querySelectorAll(".sidebar-tab-pane");
+
+  function switchTab(targetTabId) {
+    const targetPaneId = targetTabId.replace("tab-", "tab-pane-");
+    activityTabBtns.forEach((b) => b.classList.toggle("active", b.dataset.tab === targetTabId));
+    sidebarTabPanes.forEach((p) => p.classList.toggle("active", p.id === targetPaneId));
+  }
+
+  activityTabBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      switchTab(btn.dataset.tab);
+    });
+  });
+
+  if (window.location.hash) {
+    const hash = window.location.hash.replace("#", "");
+    if (document.getElementById(hash.replace("tab-", "tab-pane-"))) {
+      switchTab(hash);
+    }
   }
 
   // Initial load
