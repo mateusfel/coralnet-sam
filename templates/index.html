@@ -3,26 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CoralNet + CoralSCOP — Segmentação Bêntica Automatizada</title>
+  <title>CoralSCOP + BioCLIP 2.5 ReefNet — Segmentação e Taxonomia de Corais</title>
   <link rel="stylesheet" href="/static/css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
   <header class="app-header">
     <div class="header-left">
-      <div class="logo-icon">🪸</div>
+      <div class="logo-icon" aria-hidden="true">
+        <svg viewBox="0 0 36 36" width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="coralGradHeader" x1="6" y1="4" x2="30" y2="32" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#fb7185"/>
+              <stop offset="55%" stop-color="#f43f5e"/>
+              <stop offset="100%" stop-color="#f97316"/>
+            </linearGradient>
+          </defs>
+          <path d="M18 31V18M18 22C13.5 22 10 18.8 10 14.2V10.5M10 14.5C7.2 14.5 5.5 12.6 5.5 9.8V7.5M18 19.5C22.5 19.5 26 16.4 26 11.8V8.5M26 13C28.6 13 30.5 11.1 30.5 8.5V6.5M18 18V7.5M18 12.5C15.3 12.5 13.8 10.6 13.8 8V6M18 11.5C20.5 11.5 22.2 9.7 22.2 7.2V5.5"
+                stroke="url(#coralGradHeader)" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 31.5H25" stroke="#38bdf8" stroke-width="2.6" stroke-linecap="round" opacity="0.85"/>
+        </svg>
+      </div>
       <div>
-        <h1>CoralSCOP + CoralNet <span class="tag-version">CVPR 2024 &bull; Fase 4</span></h1>
-        <p class="subtitle">Segmentação Semântica Exclusiva de Corais &bull; Realce Subaquático &bull; Homografia 4-Cantos em cm²</p>
+        <h1>CoralSCOP + BioCLIP 2.5 <span class="tag-version">ReefNet &bull; Fase 6</span></h1>
+        <p class="subtitle">Segmentação Semântica de Corais &bull; Classificação de Gêneros (BioCLIP 2.5 GPU) &bull; Agrupamento &amp; Homografia 4-Cantos</p>
       </div>
     </div>
     <div class="header-right">
+      <div id="project-header-pill" class="badge badge-project" title="Projeto ativo (clique para gerenciar)">
+        <span class="project-pill-icon">📁</span>
+        <span class="project-pill-title">Projeto:</span>
+        <strong id="header-project-name">Demonstração</strong>
+      </div>
+      <button id="btn-open-projects" class="btn btn-secondary btn-sm" title="Gerenciar Projetos Locais e Diretórios">
+        📁 Projetos
+      </button>
       <div id="colab-status-badge" class="badge badge-offline">
         <span class="status-dot"></span>
         <span id="colab-status-text">Colab GPU: Desconectado</span>
       </div>
-      <div class="badge badge-info">
-        <span>CoralNet: EfficientNet-B0 Local</span>
+      <div id="bioclip-status-badge" class="badge badge-info" title="Classificador estrito de Gêneros de Corais">
+        <span id="bioclip-status-text">BioCLIP 2.5: 11 Gêneros</span>
       </div>
       <button id="btn-open-logs" class="btn btn-secondary btn-sm" title="Abrir terminal de logs e diagnóstico do Colab">
         📋 Logs
@@ -33,11 +54,11 @@
   <main class="app-layout">
     <!-- Sidebar Controls -->
     <aside class="sidebar">
-      <!-- 1. Google Colab CoralSCOP Connection -->
+      <!-- 1. Google Colab CoralSCOP + BioCLIP 2.5 Connection -->
       <section class="card">
         <div class="card-header">
           <span class="card-step">1</span>
-          <h2>Servidor CoralSCOP (Google Colab)</h2>
+          <h2>Servidor GPU (CoralSCOP + BioCLIP 2.5)</h2>
         </div>
 
         <div class="form-group">
@@ -55,33 +76,89 @@
             </button>
           </div>
           <small class="help-text" id="colab-help-text">
-            Abra <code>colab/sam_server_colab.ipynb</code> no Colab para rodar o CoralSCOP ViT-B na GPU Tesla T4.
+            Abra <code>colab/sam_server_colab.ipynb</code> no Colab para rodar CoralSCOP ViT-B + BioCLIP 2.5 ReefNet na Tesla T4.
           </small>
         </div>
       </section>
 
-      <!-- 2. Image Selection & Upload -->
-      <section class="card">
+      <!-- 2. Project Workspace & Survey Images -->
+      <section class="card project-card-section">
         <div class="card-header">
-          <span class="card-step">2</span>
-          <h2>Foto do Transecto Submarino</h2>
+          <div class="card-header-title">
+            <span class="card-step">2</span>
+            <h2>Projeto &amp; Fotos do Transecto</h2>
+          </div>
+          <button type="button" id="btn-quick-projects" class="btn btn-outline btn-xs" title="Criar ou alternar projeto local fora do repositório">
+            📁 Projetos
+          </button>
         </div>
 
-        <div class="form-group">
-          <label for="image-select">Selecione uma Imagem do Transecto:</label>
-          <select id="image-select" class="form-control">
-            <option value="">Carregando fotos...</option>
-          </select>
+        <!-- Project active info bar -->
+        <div class="project-info-bar">
+          <div class="project-info-text">
+            <span class="project-tag" id="sidebar-project-type">DEMO</span>
+            <strong id="sidebar-project-name" title="Nome do projeto ativo">Modo Demonstração</strong>
+          </div>
+          <div class="project-info-actions">
+            <button type="button" id="btn-download-proj-csv" class="btn btn-outline btn-xs" title="Baixar planilha CSV consolidando todas as fotos com hash verificado deste projeto" style="display: none;">
+              📊 CSV Geral
+            </button>
+          </div>
+        </div>
+        <div class="project-path-subtext" id="sidebar-project-path" title="Caminho raiz do projeto no disco">
+          d:\coralnet-sam\images
         </div>
 
+        <!-- Batch & Status Summary Badges -->
+        <div class="batch-summary-counts" id="batch-summary-counts">
+          <span class="badge badge-success" id="count-processed-badge" title="Fotos com polígonos válidos salvos">✅ 0 processadas</span>
+          <span class="badge badge-warning" id="count-pending-badge" title="Fotos aguardando CoralSCOP">⏳ 0 pendentes</span>
+          <span class="badge badge-danger" id="count-mismatch-badge" style="display: none;" title="Fotos que foram substituídas por arquivo de mesmo nome">⚠️ 0 alteradas</span>
+        </div>
+
+        <!-- Batch Action Buttons -->
+        <div class="batch-action-bar">
+          <button type="button" id="btn-batch-pending" class="btn btn-secondary btn-xs" title="Processar todas as fotos pendentes do projeto no Colab">
+            ⚡ Lote: Pendentes
+          </button>
+          <button type="button" id="btn-batch-selected" class="btn btn-outline btn-xs" title="Processar apenas as fotos marcadas na lista abaixo">
+            ☑️ Selecionadas (<span id="batch-selected-count">0</span>)
+          </button>
+          <button type="button" id="btn-batch-all" class="btn btn-outline btn-xs" title="Processar ou reprocessar todas as fotos do projeto">
+            🚀 Processar Todas as Fotos
+          </button>
+        </div>
+
+        <!-- Hidden select kept for state synchronization without UI clutter -->
+        <select id="image-select" style="display: none;"></select>
+
+        <!-- Batch photo selection list / checklist with status badges -->
+        <div class="photo-checklist-container">
+          <div class="photo-checklist-header">
+            <label class="photo-select-all-label">
+              <input type="checkbox" id="chk-select-all-photos">
+              <span>Selecionar todas (<span id="photo-total-count">0</span>)</span>
+            </label>
+            <div class="photo-checklist-right-badge">
+              <span class="photo-checklist-sublabel">Ativa:</span>
+              <span id="active-photo-status-badge" class="badge badge-info" style="font-size: 0.68rem; padding: 2px 6px;">Pendente</span>
+            </div>
+          </div>
+          <div class="photo-checklist-items" id="photo-checklist-items">
+            <!-- Gerado via JavaScript -->
+          </div>
+        </div>
+
+        <!-- Thumbnail Strip -->
         <div class="thumbnail-strip" id="thumbnail-strip">
           <!-- Miniaturas carregadas via JS -->
         </div>
 
+        <!-- Multi-file Upload Box -->
         <div class="upload-box" id="upload-box">
-          <input type="file" id="file-input" accept="image/*" style="display: none;">
+          <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
           <button type="button" class="btn btn-outline btn-sm btn-block" onclick="document.getElementById('file-input').click()">
-            📁 Enviar Nova Foto do Computador
+            📁 Adicionar Fotos ao Projeto (Suporta Múltiplas)
           </button>
         </div>
       </section>
@@ -90,7 +167,7 @@
       <section class="card">
         <div class="card-header">
           <span class="card-step">3</span>
-          <h2>Filtro Subaquático & Quadrante</h2>
+          <h2>Filtro Subaquático &amp; Quadrante</h2>
         </div>
 
         <!-- Underwater Optical Filter -->
@@ -108,7 +185,7 @@
             </button>
           </div>
           <small class="help-text">
-            Remove o véu verde/azulado e realça bordas de colônias antes de enviar ao CoralSCOP.
+            Remove o véu verde/azulado e realça bordas e coralitos antes do CoralSCOP + BioCLIP 2.5.
           </small>
         </div>
 
@@ -187,11 +264,40 @@
             <span class="value-badge"><strong id="iou-val">0.60</strong></span>
           </div>
           <input type="range" id="iou-slider" min="0.30" max="0.90" value="0.60" step="0.05" class="slider">
-          <small class="help-text">NMS calculado sobre a máscara poligonal real (não mais por retângulos).</small>
+          <small class="help-text">NMS calculado sobre a máscara poligonal real.</small>
         </div>
       </section>
 
-      <!-- 4. Advanced CoralSCOP Hyperparameters Accordion -->
+      <!-- 4. BioCLIP 2.5 ReefNet & Optional Few-Shot Signature Memory -->
+      <section class="card fewshot-card">
+        <div class="card-header">
+          <span class="card-step">4</span>
+          <h2>BioCLIP 2.5 &amp; Few-Shot (Opcional)</h2>
+        </div>
+
+        <div class="fewshot-toggle-row">
+          <label class="fewshot-switch-label" for="chk-fewshot-enabled">
+            <input type="checkbox" id="chk-fewshot-enabled" checked>
+            <span>Usar Assinaturas Aprendidas (Few-Shot)</span>
+          </label>
+          <span id="fewshot-status-pill" class="roi-status-pill roi-inactive">Zero-Shot Puro</span>
+        </div>
+
+        <div id="fewshot-genera-chips" class="fewshot-chips-box">
+          <span class="fewshot-empty-note">Modo 100% automático (BioCLIP 2.5 ReefNet — somente gêneros de corais). Clique em qualquer polígono no mapa se quiser ensinar um gênero ou filtrar "Não é Coral".</span>
+        </div>
+
+        <div class="roi-btn-row" id="fewshot-actions-row" style="display: none;">
+          <button type="button" id="btn-reclassify-photo" class="btn btn-secondary btn-sm" style="flex: 1;" title="Reaplicar memória Few-Shot na foto aberta sem rodar o Colab">
+            🔄 Reclassificar Foto
+          </button>
+          <button type="button" id="btn-clear-fewshot" class="btn btn-outline btn-sm" title="Apagar todas as assinaturas salvas e voltar ao Zero-Shot puro">
+            🗑️ Limpar
+          </button>
+        </div>
+      </section>
+
+      <!-- 5. Advanced CoralSCOP Hyperparameters Accordion -->
       <section class="card accordion-card" id="sam-params-card">
         <div class="card-header accordion-toggle" id="toggle-sam-params" title="Clique para expandir ou recolher os hiperparâmetros do CoralSCOP">
           <div class="card-header-title">
@@ -273,28 +379,29 @@
             ↺ Restaurar Padrões Oficiais do CoralSCOP
           </button>
 
-          <!-- Practical CoralSCOP Tuning Guide -->
+          <!-- Practical CoralSCOP + BioCLIP Tuning Guide -->
           <div class="tuning-guide-box">
             <div class="tuning-guide-header">
-              <span class="tuning-guide-icon">🪸</span>
-              <strong>Guia Prático — CoralSCOP + Realce</strong>
+              <span class="tuning-guide-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 21V12M12 15C9 15 6.8 12.8 6.8 9.8V7.2M6.8 10C5 10 3.8 8.7 3.8 6.8V5.2M12 13.2C15 13.2 17.3 11.1 17.3 8V5.8M17.3 8.8C19 8.8 20.2 7.5 20.2 5.8V4.4M12 12V5"
+                        stroke="#fb7185" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <strong>Guia Prático — CoralSCOP + BioCLIP 2.5</strong>
             </div>
             <ul class="tuning-guide-list">
               <li>
-                <strong>Padrão Calibrado (CVPR 2024):</strong>
-                <span>Grade <code>32</code>, Confiança <code>0.72</code> e Estabilidade <code>0.62</code>. Não use 0.90 como no SAM antigo para não perder colônias maciças!</span>
+                <strong>Somente Gêneros de Corais:</strong>
+                <span>O BioCLIP 2.5 ReefNet avalia cada colônia em <em>Multi-Escala</em> (forma Macro + coralitos Micro <code>224×224</code> em 4K) exclusivamente entre os 11 gêneros de corais.</span>
               </li>
               <li>
-                <strong>Colônias cortadas por fios brancos do quadrante?</strong>
-                <span>O servidor já aplica fechamento morfológico automático e suporta múltiplos lóbulos por colônia, ignorando o fio.</span>
+                <strong>Agrupar Polígonos &amp; Filtro "Não é Coral":</strong>
+                <span>Segure <em>Shift + Clique</em> (ou use o botão de seleção no inspetor) para agrupar polígonos do mesmo gênero em 1 colônia, ou ensine <em>Não é Coral</em> para filtrar falsos positivos automaticamente.</span>
               </li>
               <li>
-                <strong>Falsos positivos em algas calcárias ou esponjas?</strong>
-                <span>Suba levemente <em>pred_iou</em> para <code>0.76–0.80</code> ou <em>Tamanho Mínimo</em> para <code>3.000 px</code>.</span>
-              </li>
-              <li>
-                <strong>Corais muito pequenos ou incrustantes na sombra?</strong>
-                <span>Use o filtro <em>Combinado (Balanço + CLAHE)</em>, marque os 4 cantos do quadrante e baixe <em>pred_iou</em> para <code>0.66</code>.</span>
+                <strong>Navegação com Zoom e Arraste:</strong>
+                <span>Use o <em>scroll do mouse</em> para dar zoom nos coralitos e arraste a foto livremente para qualquer lado. Pressione <code>V</code> para ocultar/exibir polígonos rapidamente.</span>
               </li>
             </ul>
           </div>
@@ -305,7 +412,7 @@
       <section class="card action-card">
         <button id="btn-run" class="btn btn-primary btn-block btn-lg">
           <span class="btn-icon">⚡</span>
-          <span id="btn-run-text">Executar CoralSCOP ➔ CoralNet</span>
+          <span id="btn-run-text">Executar CoralSCOP ➔ BioCLIP 2.5</span>
         </button>
       </section>
     </aside>
@@ -319,18 +426,37 @@
           <span id="colony-count-badge" class="badge badge-count" style="display: none;">0 colônias</span>
         </div>
         <div class="toolbar-right">
+          <!-- Post-processing Polygon Visibility & Manual Demarcation Controls -->
+          <div id="polygon-visibility-controls" class="polygon-vis-group" style="display: none;">
+            <button type="button" id="btn-draw-polygon" class="btn btn-primary btn-sm" title="Demarcar manualmente um coral não contornado pela IA (Atalho: tecla N)">
+              ➕ Novo Polígono
+            </button>
+            <button type="button" id="btn-toggle-polygons" class="btn btn-secondary btn-sm" title="Exibir ou ocultar todos os polígonos (Atalho: tecla V)">
+              👁️ Polígonos
+            </button>
+            <button type="button" id="btn-toggle-outline" class="btn btn-outline btn-sm" title="Mostrar apenas o contorno vazado dos polígonos para ver os coralitos">
+              ⭕ Só Contorno
+            </button>
+            <button type="button" id="btn-toggle-discarded" class="btn btn-outline btn-sm" style="display: none;" title="Exibir ou ocultar polígonos descartados como Não é Coral">
+              🚫 Não-Coral (0)
+            </button>
+          </div>
+
           <button id="btn-toggle-bg" class="btn btn-outline btn-sm" style="display: none;" title="Alternar imagem de fundo entre Foto Original e Foto Realçada pelo filtro">
             🖼️ Fundo: Original
           </button>
+
           <div class="view-toggle">
-            <button id="btn-mode-interactive" class="btn-toggle active">Interativo (SVG + Quadrante)</button>
+            <button id="btn-mode-interactive" class="btn-toggle active">Interativo (SVG + Edição)</button>
             <button id="btn-mode-rendered" class="btn-toggle">Mapa Estático (Matplotlib)</button>
           </div>
+
           <div class="opacity-control" id="opacity-control" style="display: none;">
             <label for="opacity-slider">Opacidade:</label>
             <input type="range" id="opacity-slider" min="10" max="90" value="42" step="4">
             <span id="opacity-val">42%</span>
           </div>
+
           <button id="btn-download-csv" class="btn btn-secondary btn-sm" style="display: none;">
             📥 Baixar CSV
           </button>
@@ -342,8 +468,21 @@
         <!-- Placeholder State -->
         <div class="viewer-placeholder" id="viewer-placeholder">
           <div class="placeholder-content">
-            <div class="placeholder-icon">🪸</div>
-            <h3>CoralSCOP + CoralNet — Segmentação Bêntica</h3>
+            <div class="placeholder-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="coralGradHero" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#fb7185"/>
+                    <stop offset="55%" stop-color="#f43f5e"/>
+                    <stop offset="100%" stop-color="#fb923c"/>
+                  </linearGradient>
+                </defs>
+                <path d="M32 55V31M32 39C24 39 18 33.5 18 25.5V19M18 26C13 26 10 22.6 10 17.5V13.5M32 34.5C40 34.5 46 29 46 21V15M46 23C50.5 23 54 19.6 54 15V11.5M32 31V13M32 22C27.2 22 24.5 18.6 24.5 14V10.5M32 20.5C36.5 20.5 39.5 17.2 39.5 12.8V9.5"
+                      stroke="url(#coralGradHero)" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M18 56H46" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+              </svg>
+            </div>
+            <h3>CoralSCOP + BioCLIP 2.5 ReefNet</h3>
             <p>Selecione uma foto ao lado, marque opcionalmente os <strong>4 cantos internos do quadrante</strong> e clique em <strong>"Executar"</strong>.</p>
           </div>
         </div>
@@ -352,7 +491,16 @@
         <div class="viewer-loading" id="viewer-loading" style="display: none;">
           <div class="spinner"></div>
           <h3 id="loading-title">Processando Imagem...</h3>
-          <p id="loading-subtext">Aplicando realce subaquático e enviando ao CoralSCOP no Google Colab...</p>
+          <p id="loading-subtext">Segmentando colônias com CoralSCOP e classificando gêneros com BioCLIP 2.5 ReefNet...</p>
+        </div>
+
+        <!-- Floating Pan, Zoom & Fullscreen HUD -->
+        <div id="zoom-hud" class="zoom-hud" style="display: none;">
+          <button type="button" id="btn-zoom-out" class="zoom-hud-btn" title="Diminuir Zoom (-)">&minus;</button>
+          <button type="button" id="btn-zoom-reset" class="zoom-hud-reset" title="Centralizar foto e restaurar zoom 100% (Tecla 0)">100%</button>
+          <button type="button" id="btn-zoom-in" class="zoom-hud-btn" title="Aumentar Zoom (+)">+</button>
+          <button type="button" id="btn-fullscreen-canvas" class="zoom-hud-btn zoom-hud-fs" title="Expandir ou recolher o canvas em Tela Cheia (Atalho: tecla F)">⛶ Tela Cheia</button>
+          <span class="zoom-hud-hint">Arraste p/ mover &bull; Scroll p/ zoom</span>
         </div>
 
         <!-- Interactive SVG Overlay Mode -->
@@ -361,44 +509,253 @@
             <span id="quadrat-banner-text">📐 Clique no canto interno 1 de 4 do quadrante de PVC...</span>
             <button type="button" id="btn-cancel-quadrat" class="btn btn-outline btn-xs">Cancelar</button>
           </div>
-          <img id="stage-image" src="" alt="Transecto Submarino">
-          <svg id="stage-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+          <div id="multiselect-banner" class="quadrat-banner multiselect-banner" style="display: none;">
+            <span id="multiselect-banner-text">🔗 Modo Agrupar: clique em outros polígonos do mesmo gênero para adicioná-los ao grupo...</span>
+            <button type="button" id="btn-done-multiselect" class="btn btn-outline btn-xs">Concluir Seleção</button>
+          </div>
+
+          <!-- Post-Processing Manual Polygon Demarcation Drawer -->
+          <div id="manual-draw-card" class="colony-editor-card manual-draw-card" style="display: none;">
+            <div class="colony-editor-header">
+              <div class="colony-editor-title">
+                <span class="tooltip-color-dot" id="manual-draw-color-dot" style="background-color: #10b981;"></span>
+                <strong>➕ Demarcar Nova Colônia</strong>
+              </div>
+              <button type="button" id="btn-close-manual-draw" class="editor-close-btn" title="Cancelar demarcação (Esc)">&times;</button>
+            </div>
+
+            <div class="colony-editor-metrics" id="manual-draw-metrics">
+              Vértices: <strong>0</strong> &bull; Clique p/ marcar pontos ou <strong>Shift+Arraste</strong> p/ laço contínuo
+            </div>
+            <div class="manual-draw-help">
+              Dê zoom nos coralitos e arraste a foto normalmente sem <code>Shift</code>. Clique no <strong>1º ponto verde</strong> (ou <code>Enter</code>) para fechar.
+            </div>
+
+            <div class="form-group" style="margin-bottom: 8px; margin-top: 8px;">
+              <label for="manual-draw-genus-select" style="font-size: 0.75rem; margin-bottom: 4px;">Classificação da Nova Colônia:</label>
+              <select id="manual-draw-genus-select" class="form-control"></select>
+            </div>
+
+            <div id="manual-draw-bioclip-note" class="manual-draw-bioclip-note">
+              🧬 Com o Colab conectado, o vetor <strong>BioCLIP 2.5 (1024-D)</strong> é extraído automaticamente (~0.3s) para permitir Few-Shot!
+            </div>
+
+            <div class="colony-editor-actions" style="margin-top: 9px;">
+              <button type="button" id="btn-save-manual-draw" class="btn btn-primary btn-sm btn-block" disabled>
+                💾 Fechar &amp; Salvar Colônia
+              </button>
+              <div class="editor-secondary-btns">
+                <button type="button" id="btn-undo-manual-vertex" class="btn btn-secondary btn-sm" style="flex: 1;" disabled title="Remover o último ponto marcado (Backspace)">
+                  ↩️ Desfazer Ponto
+                </button>
+                <button type="button" id="btn-cancel-manual-draw" class="btn btn-outline btn-sm" title="Cancelar desenho (Esc)">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Colony Inspector / Grouping / Vertex Editor / Few-Shot Teacher Drawer -->
+          <div id="colony-editor-card" class="colony-editor-card" style="display: none;">
+            <div class="colony-editor-header">
+              <div class="colony-editor-title">
+                <span id="editor-color-dot" class="tooltip-color-dot"></span>
+                <strong id="editor-colony-title">Colônia #1</strong>
+              </div>
+              <button type="button" id="btn-close-editor" class="editor-close-btn" title="Fechar inspetor">&times;</button>
+            </div>
+
+            <!-- Single-Colony Inspection View -->
+            <div id="editor-single-pane">
+              <div class="colony-editor-metrics" id="editor-colony-metrics"></div>
+              <div class="colony-editor-source" id="editor-colony-source"></div>
+
+              <div class="colony-editor-candidates" id="editor-alt-chips"></div>
+
+              <div class="form-group" style="margin-bottom: 10px;">
+                <label for="editor-genus-select" style="font-size: 0.75rem; margin-bottom: 4px;">Classificação (Gênero de Coral ou Não-Coral):</label>
+                <select id="editor-genus-select" class="form-control"></select>
+              </div>
+
+              <div class="colony-editor-actions" id="editor-active-actions">
+                <button type="button" id="btn-editor-teach" class="btn btn-primary btn-sm btn-block" title="Corrige este polígono, salva a assinatura de 1.024 números do BioCLIP 2.5 e atualiza polígonos similares!">
+                  🧠 Corrigir + Ensinar BioCLIP
+                </button>
+                <div class="editor-secondary-btns">
+                  <button type="button" id="btn-editor-save-only" class="btn btn-secondary btn-sm" style="flex: 1;" title="Aplica a correção apenas neste polígono sem salvar na memória Few-Shot">
+                    ✏️ Apenas Corrigir
+                  </button>
+                  <button type="button" id="btn-editor-delete" class="btn btn-outline btn-sm editor-delete-btn" title="Descartar este polígono como Não é Coral">
+                    🚫 Não é Coral
+                  </button>
+                </div>
+                <button type="button" id="btn-start-vertex-edit" class="btn btn-secondary btn-sm btn-block editor-vertex-btn" title="Ajustar, adicionar ou remover vértices da borda deste polígono (Atalho: tecla E)">
+                  ✒️ Editar Borda / Vértices
+                </button>
+                <button type="button" id="btn-start-group-select" class="btn btn-outline btn-sm btn-block editor-group-mode-btn" title="Clique para selecionar outros polígonos do mesmo gênero e agrupá-los em 1 colônia (ou use Shift + Clique)">
+                  🔗 Selecionar Mais Polígonos p/ Agrupar
+                </button>
+              </div>
+
+              <!-- Restore pane when inspecting a discarded Non-Coral polygon -->
+              <div id="editor-discarded-actions" style="display: none; margin-top: 6px;">
+                <button type="button" id="btn-editor-restore" class="btn btn-primary btn-sm btn-block">
+                  ♻️ Restaurar como Coral Ativo
+                </button>
+              </div>
+
+              <!-- Sub-polygon Management when inspecting a Grouped / Multi-part Colony -->
+              <div id="editor-parts-box" class="editor-parts-box" style="display: none;">
+                <div class="editor-parts-header">
+                  <strong id="editor-parts-title">🔗 Polígonos no Grupo (2 partes)</strong>
+                </div>
+                <div id="editor-parts-chips" class="editor-parts-chips"></div>
+                <div class="editor-secondary-btns" style="margin-top: 6px;">
+                  <button type="button" id="btn-part-split" class="btn btn-secondary btn-xs" style="flex: 1;" title="Remove apenas a parte selecionada deste grupo, mantendo-a como uma colônia separada">
+                    ✂️ Separar Parte
+                  </button>
+                  <button type="button" id="btn-part-discard" class="btn btn-outline btn-xs editor-delete-btn" title="Remove a parte selecionada do grupo e descarta-a como Não é Coral">
+                    🗑️ Descartar Parte
+                  </button>
+                </div>
+                <button type="button" id="btn-group-explode" class="btn btn-outline btn-xs btn-block" style="margin-top: 5px;" title="Desfaz o agrupamento inteiro em polígonos individuais">
+                  💥 Desfazer Grupo Inteiro
+                </button>
+              </div>
+            </div>
+
+            <!-- Multi-Selection Grouping View (2+ Polygons Selected) -->
+            <div id="editor-group-pane" style="display: none;">
+              <div id="group-selected-summary" class="colony-editor-metrics"></div>
+              <div id="group-selected-list" class="group-selected-list"></div>
+              <div id="group-genus-warning" class="group-genus-warning" style="display: none;"></div>
+
+              <div class="colony-editor-actions" style="margin-top: 8px;">
+                <button type="button" id="btn-confirm-group" class="btn btn-primary btn-sm btn-block">
+                  🔗 Agrupar em 1 Colônia
+                </button>
+                <div class="editor-secondary-btns">
+                  <button type="button" id="btn-toggle-add-more" class="btn btn-secondary btn-sm" style="flex: 1;">
+                    ➕ Clicar em Mais
+                  </button>
+                  <button type="button" id="btn-cancel-group-select" class="btn btn-outline btn-sm">
+                    Limpar Seleção
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Existing Polygon Vertex Editing View -->
+            <div id="editor-vertex-pane" style="display: none;">
+              <div class="colony-editor-metrics" id="vertex-edit-metrics"></div>
+              <div class="manual-draw-help">
+                &bull; <strong>Arraste</strong> os pontos dourados para ajustar a borda<br>
+                &bull; Clique nos pontos azuis <strong>(+)</strong> nas arestas p/ criar vértice<br>
+                &bull; <strong>Clique direito</strong> (ou <code>Alt+Clique</code>) num ponto dourado p/ excluir
+              </div>
+
+              <label class="fewshot-switch-label vertex-bioclip-toggle" for="chk-refresh-bioclip">
+                <input type="checkbox" id="chk-refresh-bioclip" checked>
+                <span>🧬 Atualizar vetor BioCLIP 2.5 na GPU ao salvar</span>
+              </label>
+
+              <div class="colony-editor-actions" style="margin-top: 10px;">
+                <button type="button" id="btn-save-vertex-edit" class="btn btn-primary btn-sm btn-block">
+                  💾 Salvar Nova Borda
+                </button>
+                <div class="editor-secondary-btns">
+                  <button type="button" id="btn-undo-vertex-edit" class="btn btn-secondary btn-sm" style="flex: 1;" disabled>
+                    ↩️ Desfazer
+                  </button>
+                  <button type="button" id="btn-cancel-vertex-edit" class="btn btn-outline btn-sm">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div id="editor-feedback-msg" class="editor-feedback-msg" style="display: none;"></div>
+          </div>
+
+          <!-- Pan & Zoom Unified Layer (Image + SVG 1:1 Locked) -->
+          <div id="panzoom-layer" class="panzoom-layer">
+            <img id="stage-image" src="" alt="Transecto Submarino" draggable="false">
+            <svg id="stage-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"></svg>
+          </div>
+
           <div id="colony-tooltip" class="colony-tooltip" style="display: none;"></div>
         </div>
 
-        <!-- Rendered Matplotlib Mode -->
+        <!-- Rendered Matplotlib Mode (Also Pan & Zoom Enabled) -->
         <div class="rendered-stage" id="rendered-stage" style="display: none;">
-          <img id="rendered-image" src="" alt="Mapa Semântico">
+          <div id="rendered-panzoom-layer" class="panzoom-layer">
+            <img id="rendered-image" src="" alt="Mapa Semântico" draggable="false">
+          </div>
         </div>
       </div>
 
-      <!-- Ecological Summary Cards & Table -->
+      <!-- Ecological Summary Cards & Per-Group / Per-Colony Footer Table -->
       <div class="results-panel" id="results-panel" style="display: none;">
         <div class="results-header">
-          <h2>📊 Relatório Ecológico & Cobertura Coralínea Real</h2>
-          <div class="results-meta" id="results-meta"></div>
+          <div>
+            <h2>📊 Relatório Ecológico — Cobertura Coralínea</h2>
+            <div class="results-meta" id="results-meta"></div>
+          </div>
+          <div class="view-toggle" id="table-mode-toggle">
+            <button type="button" id="btn-table-groups" class="btn-toggle active">📋 Por Colônia / Grupo</button>
+            <button type="button" id="btn-table-genera" class="btn-toggle">📊 Consolidado por Gênero</button>
+          </div>
         </div>
 
-        <!-- Coverage Progress Bars -->
+        <div class="interactive-tip-bar">
+          💡 <strong>Pós-Processamento:</strong> Use <strong>➕ Novo Polígono</strong> (<code>N</code>) p/ demarcar corais omitidos &bull; Clique num polígono p/ corrigir gênero, marcar <em>Não é Coral</em> ou <strong>✒️ Editar Borda</strong> (<code>E</code>) &bull; <strong>Shift + Clique</strong> p/ agrupar polígonos do mesmo gênero &bull; <code>V</code> oculta/exibe polígonos &bull; <code>F</code> abre Tela Cheia.
+        </div>
+
+        <!-- Consolidated Genus Progress Bars -->
         <div class="coverage-bars-grid" id="coverage-bars-grid">
           <!-- Gerado via JS -->
         </div>
 
-        <!-- Detailed Species Table -->
-        <div class="table-container">
+        <!-- Footer Table 1 (Default): Coverage & Genus per Individual Colony / Group -->
+        <div class="table-container" id="groups-table-wrapper">
+          <table class="species-table" id="groups-table">
+            <thead>
+              <tr>
+                <th>Cor</th>
+                <th>Colônia / Grupo</th>
+                <th>Gênero Coralíneo</th>
+                <th>Polígonos</th>
+                <th>Origem / Confiança</th>
+                <th>Área Real (cm²)</th>
+                <th>Cobertura no Quadrante (%)</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="groups-tbody">
+              <!-- Linhas por grupo/colônia geradas via JS -->
+            </tbody>
+            <tfoot id="groups-tfoot">
+              <!-- Rodapé de somatório total -->
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Footer Table 2 (Optional Switch): Consolidated Coverage per Genus -->
+        <div class="table-container" id="genera-table-wrapper" style="display: none;">
           <table class="species-table" id="species-table">
             <thead>
               <tr>
                 <th>Cor</th>
                 <th>Gênero Coralíneo</th>
-                <th>Colônias</th>
+                <th>Colônias / Grupos</th>
                 <th>Área Real (cm²)</th>
                 <th>Cobertura no Quadrante (%)</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody id="species-tbody">
-              <!-- Linhas geradas via JS -->
+              <!-- Linhas consolidadas por gênero geradas via JS -->
             </tbody>
           </table>
         </div>
@@ -413,8 +770,8 @@
         <div class="logs-title-row">
           <span class="logs-icon">📋</span>
           <div>
-            <h3>Console de Logs & Diagnóstico</h3>
-            <p class="logs-subtitle">Comunicação local ➔ Google Colab CoralSCOP em tempo real</p>
+            <h3>Console de Logs &amp; Diagnóstico</h3>
+            <p class="logs-subtitle">Comunicação local ➔ Google Colab (CoralSCOP + BioCLIP 2.5) em tempo real</p>
           </div>
         </div>
         <div class="logs-actions">
@@ -431,6 +788,170 @@
       <div class="logs-footer">
         <span id="log-file-path" class="log-file-label">Arquivo de log: logs/pipeline.log</span>
         <button id="btn-copy-logs" class="btn btn-outline btn-sm">📋 Copiar Logs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Manager Modal -->
+  <div id="projects-modal" class="logs-modal-overlay" style="display: none;">
+    <div class="projects-modal-card">
+      <div class="projects-modal-header">
+        <div class="projects-title-row">
+          <span class="projects-icon">📁</span>
+          <div>
+            <h3>Gerenciador de Projetos de Transectos</h3>
+            <p class="projects-subtitle">Organize fotos, polígonos, filtros e relatórios de pesquisa fora do repositório</p>
+          </div>
+        </div>
+        <button id="btn-close-projects" class="btn btn-secondary btn-sm" title="Fechar Janela">&times;</button>
+      </div>
+
+      <!-- Modal Tabs -->
+      <div class="modal-tab-nav">
+        <button type="button" class="modal-tab-btn active" data-tab="tab-recent-projects">📂 Projetos Recentes</button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-new-project">➕ Criar Novo Projeto</button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-open-project">🔍 Abrir Outro Projeto</button>
+        <button type="button" class="modal-tab-btn" data-tab="tab-demo-project">🧪 Modo Demonstração</button>
+      </div>
+
+      <div class="projects-modal-content">
+        <!-- Tab 1: Recent Projects -->
+        <div class="modal-tab-pane active" id="tab-recent-projects">
+          <div class="recent-projects-list" id="recent-projects-list">
+            <!-- Gerado dinamicamente via JS -->
+          </div>
+        </div>
+
+        <!-- Tab 2: New Project -->
+        <div class="modal-tab-pane" id="tab-new-project">
+          <div class="project-form">
+            <div class="form-group">
+              <label for="new-project-name">Nome do Projeto / Transecto:</label>
+              <input type="text" id="new-project-name" class="form-control" placeholder="ex: Abrolhos_Transecto_1_2026">
+              <small class="help-text">Nome identificador do levantamento ou sítio de amostragem.</small>
+            </div>
+
+            <div class="form-group">
+              <label for="new-project-root">Pasta Raiz no Computador:</label>
+              <div class="input-with-btn">
+                <input type="text" id="new-project-root" class="form-control" placeholder="C:\Projetos_Corais\Abrolhos_2026">
+                <button type="button" id="btn-pick-folder-new" class="btn btn-secondary" title="Abrir Seletor de Pastas Nativo do Windows">
+                  📁 Selecionar Pasta
+                </button>
+              </div>
+              <small class="help-text text-warning">
+                ⚠️ A pasta deve ser criada fora de <code>d:\coralnet-sam</code> para manter o código limpo e independente.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-option-card">
+                <input type="checkbox" id="chk-copy-samples" checked>
+                <div class="checkbox-option-content">
+                  <strong>Copiar fotos padrão de teste para este projeto</strong>
+                  <p>Copia as 3 fotos calibradas de demonstração (Recife de Fora / Abrolhos) para a pasta <code>raw_images/</code> do novo projeto.</p>
+                </div>
+              </label>
+            </div>
+
+            <div class="project-structure-box">
+              <div class="structure-title">Estrutura que será criada automaticamente:</div>
+              <ul class="structure-tree">
+                <li>📁 <strong>[Pasta Raiz do Projeto]</strong></li>
+                <li>├── 📄 <code>coralscop_project.json</code> <em>(Identificador oficial do projeto)</em></li>
+                <li>├── 📁 <code>raw_images/</code> <em>(Fotos originais subaquáticas)</em></li>
+                <li>├── 📁 <code>filtered_images/</code> <em>(Imagens com realce óptico CLAHE / White Balance)</em></li>
+                <li>├── 📁 <code>polygons/</code> <em>(Polígonos, gêneros e calibrações associados por hash SHA-256)</em></li>
+                <li>└── 📁 <code>exports/</code> <em>(Mapas estáticos Matplotlib e planilhas CSV consolidadas)</em></li>
+              </ul>
+            </div>
+
+            <div class="modal-form-actions">
+              <button type="button" id="btn-create-project-submit" class="btn btn-primary btn-block">
+                ✨ Criar e Abrir Projeto
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Open Existing Project -->
+        <div class="modal-tab-pane" id="tab-open-project">
+          <div class="project-form">
+            <div class="form-group">
+              <label for="open-project-root">Caminho da Pasta do Projeto:</label>
+              <div class="input-with-btn">
+                <input type="text" id="open-project-root" class="form-control" placeholder="C:\Projetos_Corais\Meu_Projeto_Existente">
+                <button type="button" id="btn-pick-folder-open" class="btn btn-secondary" title="Procurar Pasta do Windows">
+                  📁 Procurar Pasta
+                </button>
+              </div>
+              <small class="help-text">A pasta deve conter o arquivo <code>coralscop_project.json</code> gerado pelo CoralSCOP.</small>
+            </div>
+
+            <div class="modal-form-actions">
+              <button type="button" id="btn-open-project-submit" class="btn btn-primary btn-block">
+                📂 Abrir Projeto
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Demo Mode -->
+        <div class="modal-tab-pane" id="tab-demo-project">
+          <div class="demo-mode-box">
+            <div class="demo-icon">🧪</div>
+            <h4>Modo Demonstração (Sugestão de Teste)</h4>
+            <p>Utiliza o conjunto de fotos e modelos embutidos no repositório (<code>images/</code>) para testes rápidos e demonstração sem criar pastas no disco.</p>
+            <button type="button" id="btn-activate-demo" class="btn btn-secondary btn-block">
+              🔄 Ativar Modo Demonstração
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="projects-modal-footer">
+        <span id="active-project-footer-label">Projeto Ativo: Modo Demonstração</span>
+        <button type="button" id="btn-modal-close-footer" class="btn btn-outline btn-sm">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Processing Progress Modal -->
+  <div id="batch-progress-modal" class="logs-modal-overlay" style="display: none;">
+    <div class="batch-modal-card">
+      <div class="batch-modal-header">
+        <div class="batch-title-row">
+          <span class="batch-icon">🚀</span>
+          <div>
+            <h3 id="batch-modal-title">Processamento em Lote</h3>
+            <p class="batch-subtitle" id="batch-modal-subtitle">Executando CoralSCOP ViT-B e BioCLIP 2.5 ReefNet...</p>
+          </div>
+        </div>
+        <button id="btn-close-batch-modal" class="btn btn-secondary btn-sm" title="Fechar" style="display: none;">&times;</button>
+      </div>
+
+      <div class="batch-modal-body">
+        <!-- Overall Progress Bar -->
+        <div class="batch-progress-container">
+          <div class="batch-progress-labels">
+            <span id="batch-progress-count">Foto 0 de 0</span>
+            <strong id="batch-progress-percent">0%</strong>
+          </div>
+          <div class="batch-progress-bar-bg">
+            <div class="batch-progress-bar-fill" id="batch-progress-bar-fill" style="width: 0%;"></div>
+          </div>
+          <div class="batch-current-image" id="batch-current-image">Aguardando início...</div>
+        </div>
+
+        <!-- Batch Processing Checklist / Log -->
+        <div class="batch-checklist" id="batch-checklist">
+          <!-- Linhas geradas dinamicamente -->
+        </div>
+      </div>
+
+      <div class="batch-modal-footer">
+        <button type="button" id="btn-cancel-batch" class="btn btn-outline btn-sm" style="display: none;">Interromper</button>
+        <button type="button" id="btn-finish-batch" class="btn btn-primary btn-sm" style="display: none;">Concluir e Ver Resultados</button>
       </div>
     </div>
   </div>

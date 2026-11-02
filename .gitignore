@@ -10,15 +10,19 @@ venv/
 ENV/
 env/
 
-# Large model weights (keep folder, don't commit big checkpoints)
+# Large model weights & local few-shot user memory
 models/*.pth
 models/*.pt
+models/*.safetensors
+models/bioclip-2.5-vith14-reefnet-lora/
+models/bioclip_fewshot_memory.json
 !models/.gitkeep
 
 # Outputs & runtime logs
 output/*
 !output/.gitkeep
 logs/*.log
+logs/*.json
 
 # IDEs
 .vscode/

@@ -1,5 +1,6 @@
 import os
 import io
+import json
 import time
 import cv2
 import numpy as np
@@ -8,14 +9,15 @@ from typing import Dict, Any, List, Optional, Tuple
 from PIL import Image
 
 from src.geometry import generate_approx_polygon
+from src.coral_classifier import pack_colonies_spritesheet
 
 
 class RemoteSAMClient:
     """
-    Client that communicates with the Google Colab CoralSCOP / SAM GPU microservice.
-    Sends high-resolution (and optionally underwater-enhanced / quadrat-cropped) coral reef
-    survey photos, properly scales min_area to the GPU tensor resolution, and reprojects
-    returned multi-part colony contours back onto the original full-resolution photo.
+    Client that communicates with the Google Colab CoralSCOP + BioCLIP 2.5 ReefNet GPU microservice.
+    1. /segment: Sends underwater-enhanced / quadrat-cropped survey photo to CoralSCOP ViT-B.
+    2. /classify_bioclip: Sends full-resolution multi-scale (Macro + Micro) 224x224 colony sprite-sheet
+       to BioCLIP 2.5 ViT-H/14 ReefNet on the same Colab GPU, returning genus similarities and 1024-D signatures.
     """
 
     def __init__(self, colab_url: str = None, timeout: int = 300, max_dimension: int = 1024):
@@ -23,16 +25,18 @@ class RemoteSAMClient:
         self.timeout = timeout
         self.max_dimension = max_dimension
 
+    def _headers(self) -> Dict[str, str]:
+        return {
+            "ngrok-skip-browser-warning": "true",
+            "Bypass-Tunnel-Reminder": "true",
+            "User-Agent": "CoralSCOP-BioCLIP25-Client/3.0"
+        }
+
     def is_connected(self) -> bool:
         if not self.colab_url:
             return False
         try:
-            headers = {
-                "ngrok-skip-browser-warning": "true",
-                "Bypass-Tunnel-Reminder": "true",
-                "User-Agent": "CoralNet-CoralSCOP-Client/2.0"
-            }
-            resp = requests.get(f"{self.colab_url}/health", headers=headers, timeout=8)
+            resp = requests.get(f"{self.colab_url}/health", headers=self._headers(), timeout=8)
             return resp.status_code == 200
         except Exception:
             return False
@@ -61,7 +65,7 @@ class RemoteSAMClient:
         if not self.colab_url:
             raise ValueError(
                 "Nenhuma URL do Colab informada. Abra o notebook 'colab/sam_server_colab.ipynb' "
-                "no Google Colab, inicie o servidor CoralSCOP e passe a URL gerada pelo ngrok."
+                "no Google Colab, inicie o servidor CoralSCOP + BioCLIP 2.5 e passe a URL gerada pelo ngrok."
             )
 
         endpoint = f"{self.colab_url}/segment"
@@ -107,16 +111,13 @@ class RemoteSAMClient:
         send_img.save(buf, format="JPEG", quality=95)
         buf.seek(0)
 
-        headers = {
-            "ngrok-skip-browser-warning": "true",
-            "Bypass-Tunnel-Reminder": "true",
-            "User-Agent": "CoralNet-CoralSCOP-Client/2.0"
-        }
         files = {"file": (os.path.basename(image_path), buf, "image/jpeg")}
 
         t0 = time.time()
         try:
-            response = requests.post(endpoint, files=files, params=params, headers=headers, timeout=self.timeout)
+            response = requests.post(
+                endpoint, files=files, params=params, headers=self._headers(), timeout=self.timeout
+            )
         except requests.exceptions.ConnectionError as ce:
             raise ConnectionError(
                 f"Conexão perdida com o Colab ({self.colab_url}). O túnel foi encerrado pelo servidor remoto. "
@@ -128,8 +129,18 @@ class RemoteSAMClient:
             ) from te
 
         elapsed = round(time.time() - t0, 1)
+        if response.status_code in (502, 504):
+            is_lt = "loca.lt" in (self.colab_url or "")
+            tunnel_tip = (
+                "Você está conectado via Localtunnel (.loca.lt), que corta requisições acima de ~90–120s (como Grade 64x64). "
+                "No Colab, clique no ícone de Chave 🔑 (Secrets) à esquerda, ative o acesso ao 'NGROK_AUTHTOKEN' para este notebook "
+                "e rode apenas a Célula 6 novamente (ou reduza a Grade de Sondagem para 32)."
+                if is_lt else
+                "O proxy do túnel encerrou a conexão por tempo limite. Tente reduzir a Grade de Sondagem de 64 para 32 ou reexecute a Célula 6 no Colab."
+            )
+            raise RuntimeError(f"Tempo limite do túnel ({response.status_code} Bad Gateway após {elapsed}s). {tunnel_tip}")
         if response.status_code != 200:
-            raise RuntimeError(f"Erro retornado pelo Colab ({response.status_code}): {response.text}")
+            raise RuntimeError(f"Erro retornado pelo Colab ({response.status_code}): {response.text[:300]}")
 
         data = response.json()
         engine_name = data.get("model", "CoralSCOP / SAM")
@@ -194,3 +205,64 @@ class RemoteSAMClient:
         data["elapsed_gpu_sec"] = elapsed
 
         return data
+
+    def classify_colonies_bioclip(
+        self,
+        enhanced_image: Image.Image,
+        masks: List[Dict[str, Any]],
+        colony_points_list: List[List[Tuple[int, int]]]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Packs full-resolution (4000x3000) Multi-Scale Macro + Micro 224x224 crops for all
+        NMS-filtered colonies into a compact JPEG sprite-sheet and sends a single batch request
+        to BioCLIP 2.5 ViT-H/14 ReefNet on the Colab GPU (/classify_bioclip).
+        Returns None if /classify_bioclip is unavailable (e.g., outdated Colab session).
+        """
+        if not self.colab_url or not masks:
+            return None
+
+        endpoint = f"{self.colab_url}/classify_bioclip"
+        sheet_img, metadata = pack_colonies_spritesheet(
+            pil_image=enhanced_image,
+            masks=masks,
+            colony_points_list=colony_points_list,
+            tile_size=224,
+            grid_cols=10
+        )
+
+        buf = io.BytesIO()
+        sheet_img.save(buf, format="JPEG", quality=94)
+        payload_kb = round(buf.tell() / 1024.0, 1)
+        buf.seek(0)
+
+        print(
+            f"[*] Enviando {metadata['total_tiles']} recortes Multi-Escala 224x224 ({len(masks)} colônias, "
+            f"{payload_kb} KB) ao BioCLIP 2.5 ReefNet no Colab: {endpoint}..."
+        )
+
+        files = {"file": ("colonies_spritesheet.jpg", buf, "image/jpeg")}
+        form_data = {"metadata_json": json.dumps(metadata)}
+
+        t0 = time.time()
+        try:
+            resp = requests.post(
+                endpoint, files=files, data=form_data, headers=self._headers(), timeout=self.timeout
+            )
+        except Exception as e:
+            print(f"[!] Aviso ao contatar /classify_bioclip no Colab ({e}). Usando fallback local.")
+            return None
+
+        elapsed = round(time.time() - t0, 2)
+        if resp.status_code == 404:
+            print("[!] Servidor Colab atual ainda não possui a rota /classify_bioclip (atualize o notebook no Colab).")
+            return None
+        if resp.status_code != 200:
+            raise RuntimeError(f"Erro no BioCLIP 2.5 do Colab ({resp.status_code}): {resp.text[:300]}")
+
+        res_data = resp.json()
+        res_data["elapsed_bioclip_sec"] = elapsed
+        print(
+            f"[OK] {res_data.get('classifier_model', 'BioCLIP 2.5 ReefNet')} classificou "
+            f"{len(res_data.get('results', []))} colônias em {elapsed}s!"
+        )
+        return res_data
