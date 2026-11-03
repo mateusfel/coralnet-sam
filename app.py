@@ -399,10 +399,10 @@ def api_remove_recent_project():
     })
 
 
-@app.route("/api/projects/pick-folder", methods=["POST"])
+@app.route("/api/projects/pick-folder", methods=["GET", "POST"])
 def api_pick_folder_native():
     """Opens a native Windows OS folder selection dialog in foreground and returns the chosen path."""
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     initial_dir = (data.get("initial_dir") or "").strip() or get_default_projects_parent_dir(BASE_DIR)
     title = (data.get("title") or "").strip() or "Selecione a pasta raiz do projeto CoralSCOP"
     chosen = pick_folder_native_dialog(initial_dir=initial_dir, title=title)
@@ -642,6 +642,89 @@ def upload_image():
         "uploaded_count": len(saved_names),
         "url": f"/images/{last_file}?v={last_sha}",
     })
+
+
+@app.route("/api/images/delete", methods=["POST"])
+def api_delete_image():
+    """Permanently deletes a photo and its associated polygons, filtered previews, and reports from the active project."""
+    ws = _get_ws()
+    data = request.get_json(silent=True) or {}
+    filename = (data.get("filename") or "").strip()
+
+    if not filename:
+        return jsonify({"success": False, "error": "Nome do arquivo não especificado."}), 400
+
+    fname = os.path.basename(filename)
+    if not fname:
+        return jsonify({"success": False, "error": "Nome de arquivo inválido."}), 400
+
+    raw_path = os.path.join(ws["raw_images_dir"], fname)
+    if not os.path.isfile(raw_path):
+        return jsonify({"success": False, "error": f"Arquivo '{fname}' não encontrado no projeto."}), 404
+
+    deleted_files = []
+    try:
+        # 1. Remove raw image
+        os.remove(raw_path)
+        deleted_files.append(raw_path)
+
+        stem = os.path.splitext(fname)[0]
+
+        # 2. Remove associated polygon JSON files in polygons_dir
+        if os.path.isdir(ws["polygons_dir"]):
+            for p_file in os.listdir(ws["polygons_dir"]):
+                if p_file.startswith(stem) and p_file.endswith(".json"):
+                    full_p = os.path.join(ws["polygons_dir"], p_file)
+                    try:
+                        os.remove(full_p)
+                        deleted_files.append(full_p)
+                    except Exception as e:
+                        log_event(f"Falha ao remover arquivo de polígonos {full_p}: {e}", level="WARNING")
+
+        # 3. Remove legacy output files if in demo mode or legacy dir
+        if ws.get("legacy_output_dir") and os.path.isdir(ws["legacy_output_dir"]):
+            for o_file in os.listdir(ws["legacy_output_dir"]):
+                if o_file.startswith(stem):
+                    full_o = os.path.join(ws["legacy_output_dir"], o_file)
+                    try:
+                        os.remove(full_o)
+                        deleted_files.append(full_o)
+                    except Exception:
+                        pass
+
+        # 4. Remove filtered preview images in filtered_dir
+        if os.path.isdir(ws["filtered_dir"]):
+            for f_file in os.listdir(ws["filtered_dir"]):
+                if f_file.startswith(stem):
+                    full_f = os.path.join(ws["filtered_dir"], f_file)
+                    try:
+                        os.remove(full_f)
+                        deleted_files.append(full_f)
+                    except Exception as e:
+                        log_event(f"Falha ao remover prévia filtrada {full_f}: {e}", level="WARNING")
+
+        # 5. Remove export files in exports_dir
+        if os.path.isdir(ws["exports_dir"]):
+            for x_file in os.listdir(ws["exports_dir"]):
+                if x_file.startswith(stem):
+                    full_x = os.path.join(ws["exports_dir"], x_file)
+                    try:
+                        os.remove(full_x)
+                        deleted_files.append(full_x)
+                    except Exception as e:
+                        log_event(f"Falha ao remover export {full_x}: {e}", level="WARNING")
+
+        log_event(f"Foto '{fname}' excluída com sucesso do projeto '{ws['name']}' ({len(deleted_files)} arquivos removidos).", level="SUCCESS")
+        return jsonify({
+            "success": True,
+            "filename": fname,
+            "message": f"Foto '{fname}' excluída com sucesso.",
+            "deleted_count": len(deleted_files),
+        })
+
+    except Exception as e:
+        log_event(f"Erro ao excluir foto '{fname}': {e}", level="ERROR")
+        return jsonify({"success": False, "error": f"Erro ao excluir foto: {str(e)}"}), 500
 
 
 @app.route("/api/preview-filter", methods=["POST"])

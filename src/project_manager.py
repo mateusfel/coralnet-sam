@@ -532,20 +532,22 @@ def pick_folder_native_dialog(
 ) -> Optional[str]:
     """
     Launches a native Windows OS folder selection dialog in an isolated subprocess
-    (so tkinter never conflicts with Flask worker threads and always pops up topmost).
+    (so tkinter never conflicts with Flask worker threads and always pops up topmost in front of Opera/Chrome).
     Returns the chosen absolute path, or None if the user cancelled.
     """
     start_dir = initial_dir if (initial_dir and os.path.isdir(initial_dir)) else os.path.expanduser("~")
     script = (
-        "import sys, tkinter as tk\n"
+        "import sys, os, tkinter as tk\n"
         "from tkinter import filedialog\n"
         "root = tk.Tk()\n"
         "root.withdraw()\n"
         "try:\n"
-        "    root.wm_attributes('-topmost', 1)\n"
+        "    root.attributes('-topmost', True)\n"
+        "    root.lift()\n"
+        "    root.focus_force()\n"
         "except Exception:\n"
         "    pass\n"
-        "chosen = filedialog.askdirectory(initialdir=sys.argv[1], title=sys.argv[2], mustexist=False)\n"
+        "chosen = filedialog.askdirectory(parent=root, initialdir=sys.argv[1], title=sys.argv[2], mustexist=False)\n"
         "root.destroy()\n"
         "if chosen:\n"
         "    sys.stdout.buffer.write(chosen.encode('utf-8'))\n"
@@ -554,12 +556,40 @@ def pick_folder_native_dialog(
         proc = subprocess.run(
             [sys.executable, "-c", script, start_dir, title],
             capture_output=True,
-            timeout=120,
+            timeout=180,
         )
         if proc.returncode == 0:
             raw = proc.stdout.decode("utf-8", errors="replace").strip()
-            if raw:
+            if raw and os.path.isdir(raw):
                 return os.path.abspath(raw)
     except Exception:
-        return None
+        pass
+
+    # Fallback to Windows PowerShell FolderBrowserDialog
+    if os.name == "nt":
+        try:
+            ps_script = (
+                "$ErrorActionPreference = 'Stop'; "
+                "[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null; "
+                "$f = New-Object System.Windows.Forms.FolderBrowserDialog; "
+                f"$f.Description = '{title}'; "
+                "$f.ShowNewFolderButton = $true; "
+                f"$f.SelectedPath = '{start_dir}'; "
+                "if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { "
+                "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; "
+                "[Console]::WriteLine($f.SelectedPath); "
+                "}"
+            )
+            proc_ps = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+                capture_output=True,
+                timeout=180,
+            )
+            if proc_ps.returncode == 0:
+                raw_ps = proc_ps.stdout.decode("utf-8", errors="replace").strip()
+                if raw_ps and os.path.isdir(raw_ps):
+                    return os.path.abspath(raw_ps)
+        except Exception:
+            pass
+
     return None

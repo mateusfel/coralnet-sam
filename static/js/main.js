@@ -210,6 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const opacitySlider = document.getElementById("opacity-slider");
   const opacityVal = document.getElementById("opacity-val");
   const btnDownloadCsv = document.getElementById("btn-download-csv");
+  const btnDeleteCurrentPhoto = document.getElementById("btn-delete-current-photo");
 
   const imageNameBadge = document.getElementById("image-name-badge");
   const colonyCountBadge = document.getElementById("colony-count-badge");
@@ -2672,6 +2673,7 @@ document.addEventListener("DOMContentLoaded", () => {
         : `/images/${filename}?t=${Date.now()}`;
 
     viewerPlaceholder.style.display = "none";
+    if (btnDeleteCurrentPhoto) btnDeleteCurrentPhoto.style.display = "inline-flex";
     if (zoomHud) zoomHud.style.display = "flex";
     renderedStage.style.display = activeViewMode === "rendered" ? "flex" : "none";
     interactiveStage.style.display = activeViewMode === "interactive" ? "flex" : "none";
@@ -2936,6 +2938,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (btnDeleteCurrentPhoto) {
+    btnDeleteCurrentPhoto.addEventListener("click", () => {
+      const cur = imageSelect ? imageSelect.value : "";
+      if (cur) {
+        promptDeletePhoto(cur);
+      }
+    });
+  }
+
   // =========================================================================
   // 8. PROJECT WORKSPACE, SURVEY IMAGES, CHECKLIST & BATCH PIPELINE
   // =========================================================================
@@ -2964,6 +2975,48 @@ document.addEventListener("DOMContentLoaded", () => {
       return '<span class="photo-item-badge badge-mismatch">⚠️ Alterada</span>';
     }
     return '<span class="photo-item-badge badge-pending">⏳ Pendente</span>';
+  }
+
+  async function promptDeletePhoto(filename) {
+    if (!filename) return;
+
+    const isDemo = Boolean(activeWorkspace && activeWorkspace.is_demo);
+    const demoWarning = isDemo
+      ? "\n\n⚠️ Nota: Você está no modo Demonstração. A foto de exemplo será removida."
+      : "\n\n⚠️ Esta ação apagará permanentemente o arquivo da foto no projeto, juntamente com todos os seus polígonos, contornos homográficos e relatórios exportados. Esta ação NÃO pode ser desfeita.";
+
+    const confirmed = window.confirm(
+      `🗑️ Excluir Foto do Projeto\n\n` +
+      `Tem certeza de que deseja excluir permanentemente '${filename}'?` +
+      demoWarning
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const resp = await fetch("/api/images/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename })
+      });
+      const data = await resp.json();
+      if (!data.success) {
+        throw new Error(data.error || "Falha ao excluir a foto.");
+      }
+
+      delete quadratCornersByImage[filename];
+      delete enhancedUrlByImage[filename];
+      selectedForBatch.delete(filename);
+
+      if (currentResult && currentResult.image_filename === filename) {
+        currentResult = null;
+      }
+
+      await loadProjectsAndWorkspace();
+      alert(`✅ A foto '${filename}' foi excluída com sucesso do projeto.`);
+    } catch (err) {
+      alert(`Erro ao excluir foto:\n${err.message}`);
+    }
   }
 
   function renderPhotoChecklist() {
@@ -3018,12 +3071,28 @@ document.addEventListener("DOMContentLoaded", () => {
       nameSpan.textContent = img.filename;
       nameSpan.title = img.filename;
 
+      const actionsDiv = document.createElement("div");
+      actionsDiv.className = "photo-item-actions";
+
       const sizeSpan = document.createElement("span");
       sizeSpan.className = "photo-item-size";
       sizeSpan.textContent = `${img.size_mb} MB`;
 
+      const btnDeletePhoto = document.createElement("button");
+      btnDeletePhoto.type = "button";
+      btnDeletePhoto.className = "btn-delete-photo";
+      btnDeletePhoto.title = `Excluir '${img.filename}' do projeto`;
+      btnDeletePhoto.innerHTML = "🗑️";
+      btnDeletePhoto.addEventListener("click", (e) => {
+        e.stopPropagation();
+        promptDeletePhoto(img.filename);
+      });
+
+      actionsDiv.appendChild(sizeSpan);
+      actionsDiv.appendChild(btnDeletePhoto);
+
       titleRow.appendChild(nameSpan);
-      titleRow.appendChild(sizeSpan);
+      titleRow.appendChild(actionsDiv);
 
       // 3 Pipeline Badges: 🎨 Filter, 📐 Quadrat, 🪸 AI
       const badgesRow = document.createElement("div");
@@ -3301,6 +3370,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
         }
+      } else if (workspaceImages.length === 0) {
+        currentResult = null;
+        if (imageNameBadge) imageNameBadge.textContent = "Nenhuma foto no projeto";
+        if (colonyCountBadge) colonyCountBadge.style.display = "none";
+        if (resultsPanel) resultsPanel.style.display = "none";
+        if (btnDownloadCsv) btnDownloadCsv.style.display = "none";
+        if (btnDeleteCurrentPhoto) btnDeleteCurrentPhoto.style.display = "none";
+        if (opacityControl) opacityControl.style.display = "none";
+        if (polygonVisibilityControls) polygonVisibilityControls.style.display = "none";
+        if (interactiveStage) interactiveStage.style.display = "none";
+        if (renderedStage) renderedStage.style.display = "none";
+        if (zoomHud) zoomHud.style.display = "none";
+        if (viewerPlaceholder) viewerPlaceholder.style.display = "flex";
       }
     } catch (err) {
       console.error("Erro ao carregar projeto e fotos:", err);
@@ -3393,12 +3475,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Native Folder Picker integration (Windows Explorer dialog via Python backend)
-  async function pickFolderNative(targetInput) {
+  async function pickFolderNative(targetInput, triggerBtn = null) {
+    let origText = "";
+    if (triggerBtn) {
+      origText = triggerBtn.innerHTML;
+      triggerBtn.disabled = true;
+      triggerBtn.innerHTML = "⏳ Abrindo Explorer...";
+    }
     try {
-      const resp = await fetch("/api/projects/pick-folder", { method: "POST" });
+      const resp = await fetch("/api/projects/pick-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          initial_dir: (targetInput && targetInput.value) ? targetInput.value.trim() : "",
+          title: "Selecione a pasta raiz do projeto CoralSCOP"
+        })
+      });
       const data = await resp.json();
       if (data.success && data.path) {
         targetInput.value = data.path;
+        if (targetInput === newProjectRoot && newProjectName && !newProjectName.value.trim()) {
+          const parts = data.path.replace(/\\/g, "/").split("/").filter(Boolean);
+          if (parts.length > 0) {
+            newProjectName.value = parts[parts.length - 1];
+          }
+        }
       } else if (data.cancelled) {
         // User cancelled dialog, do nothing
       } else if (data.error) {
@@ -3406,14 +3507,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (err) {
       console.warn("Seletor nativo de pasta:", err);
+      alert("Aviso: O seletor do Windows não pôde ser aberto automaticamente. Você pode digitar o caminho da pasta diretamente no campo.");
+    } finally {
+      if (triggerBtn) {
+        triggerBtn.disabled = false;
+        triggerBtn.innerHTML = origText;
+      }
     }
   }
 
   if (btnPickFolderNew && newProjectRoot) {
-    btnPickFolderNew.addEventListener("click", () => pickFolderNative(newProjectRoot));
+    btnPickFolderNew.addEventListener("click", () => pickFolderNative(newProjectRoot, btnPickFolderNew));
   }
   if (btnPickFolderOpen && openProjectRoot) {
-    btnPickFolderOpen.addEventListener("click", () => pickFolderNative(openProjectRoot));
+    btnPickFolderOpen.addEventListener("click", () => pickFolderNative(openProjectRoot, btnPickFolderOpen));
   }
 
   // Create Project
